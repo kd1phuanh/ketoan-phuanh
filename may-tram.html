@@ -803,12 +803,25 @@ function spToggleTon(label){
 function spAcSelect(el,spId,ctx){
   const sp=getSP(spId);if(!sp.id) return;
   const wrap=el.closest('.ac-sp-wrap');
-  const inp=wrap?.querySelector('input[type=text]');
-  const hid=wrap?.querySelector('input[type=hidden]');
   const drop=wrap?.querySelector('.sp-drop-wrap');
-  if(inp) inp.value=sp.sku+' – '+sp.ten;
-  if(hid) hid.value=spId;
   if(drop) drop.classList.remove('open');
+  const hid=wrap?.querySelector('input[type=hidden]');
+  if(hid) hid.value=spId;
+
+  // Chuyển ô tìm kiếm thành: SKU badge (khóa) + tên hàng (sửa được)
+  const searchInp=wrap?.querySelector('input[type=text]:not(.ten-hang-inp)');
+  if(searchInp && !wrap.querySelector('.ten-hang-inp')){
+    // Thay input search bằng SKU badge + tên editable
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:6px';
+    div.innerHTML=`<span style="font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 7px;border-radius:5px;white-space:nowrap;border:1px solid #bfdbfe">${sp.sku}</span>
+      <input type="text" class="ten-hang-inp" value="${sp.ten}"
+        placeholder="Tên hàng…"
+        style="flex:1;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px;color:#1e293b"
+        title="Có thể sửa tên hiển thị — mã hàng không thay đổi">`;
+    searchInp.replaceWith(div);
+  }
+
   const tr=wrap?.closest('tr');
   if(tr){
     const pi=tr.querySelector('.price-inp');
@@ -826,23 +839,40 @@ function addItemRow(ctx,item=null){
   const sl=item?item.sl:1;
   const dp=item?item.donGia:(sp?sp.giaBan:0);
   const ck=item?item.ck:0;
-  const val=sl*dp*(1-ck/100);
-  const spLabel=sp?(sp.sku+' – '+sp.ten):'';
+  // Tên hiển thị: ưu tiên tên đã lưu trong item (có thể đã sửa), rồi mới lấy từ SP
+  const tenHang=item?.ten||(sp?sp.ten:'');
+  const spSku=sp?sp.sku:(item?item.spId:'');
   const tr=document.createElement('tr');
-  tr.innerHTML=`<td><div class="ac-sp-wrap" style="position:relative">
-    <input type="text" value="${spLabel}" placeholder="Gõ mã hoặc tên hàng…" autocomplete="off"
-      oninput="spAcSearch(this,'${ctx}')" onfocus="spAcSearch(this,'${ctx}')"
-      style="width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px">
-    <input type="hidden" class="sp-id-inp" value="${item?item.spId:''}">
-  </div></td>
+  tr.innerHTML=`
+  <td>
+    <div class="ac-sp-wrap" style="position:relative">
+      ${spSku
+        // Đã chọn SP: hiển thị SKU (khóa) + tên (sửa được)
+        ?`<div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 7px;border-radius:5px;white-space:nowrap;border:1px solid #bfdbfe">${spSku}</span>
+            <input type="text" class="ten-hang-inp" value="${tenHang}"
+              placeholder="Tên hàng…"
+              style="flex:1;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px;color:#1e293b"
+              title="Có thể sửa tên hiển thị — mã hàng không thay đổi">
+          </div>
+          <input type="hidden" class="sp-id-inp" value="${item?item.spId:sp?.id||''}">`
+        // Chưa chọn SP: ô tìm kiếm bình thường
+        :`<input type="text" value="" placeholder="Gõ mã hoặc tên hàng…" autocomplete="off"
+            oninput="spAcSearch(this,'${ctx}')" onfocus="spAcSearch(this,'${ctx}')"
+            style="width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px">
+          <input type="hidden" class="sp-id-inp" value="">`
+      }
+    </div>
+  </td>
   <td><input type="number" value="${sl}" min="1" class="qty-inp" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
   <td><input type="number" value="${dp}" class="price-inp" style="text-align:right;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
   <td><input type="number" value="${ck}" min="0" max="100" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-  <td style="text-align:right;font-weight:700;color:var(--red)">${fmt(val)} ₫</td>
+  <td style="text-align:right;font-weight:700;color:var(--red)">${fmt(sl*dp*(1-ck/100))} ₫</td>
   <td style="text-align:center"><button class="ico-btn ico-del" onclick="this.closest('tr').remove();${calcFn}">🗑</button></td>`;
   tbody.appendChild(tr);
   if(ctx==='pxk')calcPXK();else calcBG();
 }
+
 function getItemsFromTbody(tbodyId){
   return Array.from(document.querySelectorAll('#'+tbodyId+' tr')).map(tr=>{
     const hid=tr.querySelector('.sp-id-inp');
@@ -851,7 +881,10 @@ function getItemsFromTbody(tbodyId){
     const sl=parseFloat(nums[0]?.value)||0;
     const dp=parseFloat(nums[1]?.value)||0;
     const ck=parseFloat(nums[2]?.value)||0;
-    return{spId:hid?.value||'',ten:sp.ten||'',don:sp.don||'Cái',sl,donGia:dp,ck};
+    // Lấy tên từ ô ten-hang-inp nếu có (user đã sửa), không thì lấy từ SP
+    const tenInp=tr.querySelector('.ten-hang-inp');
+    const ten=tenInp?.value?.trim()||sp.ten||'';
+    return{spId:hid?.value||'',ten,don:sp.don||'Cái',sl,donGia:dp,ck};
   }).filter(x=>x.spId&&x.sl>0);
 }
 function calcPXK(){
@@ -1504,36 +1537,38 @@ function applyRemoteData(remote){
 
 // 30 mặt hàng kiểm kho cố định — có thể thêm/bớt tại đây
 const KK_MAT_HANG_MAC_DINH = [
-  {sku:'VT00027',ten:'Giấy in A4 Double 70 (5r/thùng)'},
-  {sku:'VT00024',ten:'Giấy in A4 Pagi 70 (5r/thùng)'},
-  {sku:'VT00655',ten:'Giấy in A4 Pagi 65'},
-  {sku:'VT00023',ten:'Giấy in A4 Bãi Bằng'},
-  {sku:'VT00025',ten:'Giấy in A4 IK Plus'},
-  {sku:'VT00030',ten:'Giấy in A5 Pagi 70'},
-  {sku:'VT00774',ten:'Giấy in A5 Pagi 65'},
-  {sku:'VT00032',ten:'Giấy in A5 IK Plus'},
-  {sku:'VT00031',ten:'Giấy in A5 Double'},
-  {sku:'VT01165',ten:'Giấy in A3 IK Plus'},
-  {sku:'VT00033',ten:'Giấy in A3 Double'},
-  {sku:'VT00165',ten:'Túi sơ mi lỗ dày TM.50 (100c/tập)'},
-  {sku:'VT00175',ten:'Chia file nhựa đánh số 1-12'},
-  {sku:'VT00173',ten:'Túi clear bag F đáy (khổ F to)'},
-  {sku:'VT00188',ten:'Ghim cài C62'},
-  {sku:'VT00201',ten:'Đạn ghim no10 Plus'},
-  {sku:'VT00101',ten:'Bút nước chữ A xanh'},
-  {sku:'VT00819HN',ten:'GVS Hà Nội k lỗi (10 cuộn)'},
-  {sku:'VT01241',ten:'File càng cua 7cm TM (1561)'},
-  {sku:'ms2011',ten:'File 2 còng nhẫn 4.5cm TM ms2011'},
-  {sku:'3cxf',ten:'Sơ mi lỗ 3C XF( mỏng TQ)'},
-  {sku:'4CXF',ten:'Sơ mi lỗ 4C XF( Dày TQ)'},
-  {sku:'80tcampus',ten:'Vở kẻ ngang 80T Campus Gift'},
-  {sku:'VT00188',ten:'Ghim kẹp bướm 25mm'},
-  {sku:'VT00102',ten:'Bút bi xanh Thiên Long'},
-  {sku:'VT00103',ten:'Bút bi đen Thiên Long'},
-  {sku:'VT00104',ten:'Bút chì 2B'},
-  {sku:'VT00105',ten:'Thước kẻ 30cm'},
-  {sku:'VT00106',ten:'Kéo văn phòng'},
-  {sku:'VT00107',ten:'Băng keo trong 48mm'},
+  {sku:'VT00024', ten:'Giấy in A4 Pagi 70 (5r/thùng)'},
+  {sku:'VT00655', ten:'Giấy in A4 Pagi 65'},
+  {sku:'VT00023', ten:'Giấy in A4 Bãi Bằng'},
+  {sku:'VT00025', ten:'Giấy in A4 IK Plus'},
+  {sku:'VT00027', ten:'Giấy in A4 Double 70 (5r/thùng)'},
+  {sku:'VT00030', ten:'Giấy in A5 Pagi 70'},
+  {sku:'VT00774', ten:'Giấy in A5 Pagi 65'},
+  {sku:'VT00032', ten:'Giấy in A5 IK Plus'},
+  {sku:'VT00031', ten:'Giấy in A5 Double'},
+  {sku:'VT01165', ten:'Giấy in A3 IK Plus'},
+  {sku:'VT00033', ten:'Giấy in A3 Double'},
+  {sku:'VT00028', ten:'Giấy in A4 (VT00028)'},
+  {sku:'VT01681', ten:'VT01681'},
+  {sku:'VT01033HN', ten:'VT01033HN'},
+  {sku:'VT00819HN', ten:'GVS Hà Nội k lỗi (10 cuộn)'},
+  {sku:'VT00046', ten:'VT00046'},
+  {sku:'VT00047', ten:'VT00047'},
+  {sku:'VT00049', ten:'VT00049'},
+  {sku:'VT00048', ten:'VT00048'},
+  {sku:'VT00050', ten:'VT00050'},
+  {sku:'VT00054', ten:'VT00054'},
+  {sku:'VT00055', ten:'VT00055'},
+  {sku:'VT00052', ten:'VT00052'},
+  {sku:'VT00053', ten:'VT00053'},
+  {sku:'VT01115', ten:'VT01115'},
+  {sku:'VT00041', ten:'VT00041'},
+  {sku:'VT00045', ten:'VT00045'},
+  {sku:'VT00044', ten:'VT00044'},
+  {sku:'VT00043', ten:'VT00043'},
+  {sku:'VT00042', ten:'VT00042'},
+  // Dòng 31: Tự chọn sản phẩm (không cố định)
+  {sku:'__CUSTOM__', ten:'— Tự chọn sản phẩm —'},
 ];
 
 // DB kiểm kho lưu trong localStorage riêng
@@ -1554,15 +1589,20 @@ function kkSaveDB(){
 }
 
 function kkGetMatHang(){
-  // Lấy 30 mặt hàng mặc định, merge với sanPham từ DB để lấy tồn hệ thống
   const result=[];
   const used=new Set();
   KK_MAT_HANG_MAC_DINH.forEach(mh=>{
-    const key=mh.sku+'_'+mh.ten; // tránh trùng
-    if(used.has(key)) return;
-    used.add(key);
+    if(used.has(mh.sku)) return;
+    used.add(mh.sku);
+    if(mh.sku==='__CUSTOM__'){
+      // Dòng tự chọn — ten sẽ được lấy từ session data
+      result.push({sku:'__CUSTOM__',ten:'— Tự chọn —',tonHeThong:0,isCustom:true});
+      return;
+    }
+    // Tự động lấy tên từ DB.sanPham nếu có
     const sp=DB.sanPham.find(s=>s.sku===mh.sku||s.id===mh.sku);
-    result.push({sku:mh.sku,ten:mh.ten,tonHeThong:sp?Number(sp.ton||0):0});
+    const ten=sp?sp.ten:mh.ten; // ưu tiên tên trong DB
+    result.push({sku:mh.sku, ten, tonHeThong:sp?Number(sp.ton||0):0});
   });
   return result;
 }
@@ -1633,10 +1673,24 @@ function renderKiemKho(){
   let chenhCount=0;
   const tbody=document.getElementById('kk-tbody');
   tbody.innerHTML=list.map((mh,i)=>{
-    const tonHT=mh.tonHeThong;
-    const thucTe=data[mh.sku]!=null?data[mh.sku]:'';
-    const chenh=thucTe!==''?(Number(thucTe)-tonHT):'';
-    const ghiChu=data['_note_'+mh.sku]||'';
+    const isCustom=mh.sku==='__CUSTOM__';
+    // Với dòng custom: lấy SKU đã chọn từ session
+    const customSku=isCustom?(data['__CUSTOM_SKU__']||''):'';
+    const customTen=isCustom?(data['__CUSTOM_TEN__']||''):'';
+    const effectiveSku=isCustom?customSku:mh.sku;
+    const effectiveTen=isCustom?customTen:mh.ten;
+
+    // Lấy tồn HT cho dòng custom
+    let tonHT=mh.tonHeThong;
+    if(isCustom&&customSku){
+      const sp=DB.sanPham.find(s=>s.sku===customSku||s.id===customSku);
+      tonHT=sp?Number(sp.ton||0):0;
+    }
+
+    const dataKey=isCustom?'__CUSTOM__':mh.sku;
+    const thucTe=data[dataKey]!=null?data[dataKey]:'';
+    const chenh=thucTe!==''&&effectiveSku?(Number(thucTe)-tonHT):'';
+    const ghiChu=data['_note_'+dataKey]||'';
 
     let rowBg='',chenhStyle='',chenhVal='';
     if(chenh!==''){
@@ -1648,15 +1702,33 @@ function renderKiemKho(){
       rowBg='background:#f8fafc';
     }
 
-    return `<tr style="${rowBg};border-bottom:1px solid #e2e8f0" data-sku="${mh.sku}">
+    // Cột SKU: dòng custom hiển thị dropdown tìm SP
+    const skuCell=isCustom
+      ?`<td style="padding:4px 6px;position:sticky;left:40px;${rowBg||'background:#f8fafc'};border-right:1px solid #e2e8f0;min-width:90px">
+          <div style="position:relative">
+            <input type="text" id="kk-custom-sku-inp" value="${customSku}" placeholder="Gõ SKU…"
+              style="width:80px;padding:3px 5px;border:1px solid #3b82f6;border-radius:5px;font-size:11px;font-family:inherit;outline:none;font-weight:700;color:#2563eb"
+              oninput="kkCustomSearch(this.value)"
+              onkeydown="if(event.key==='Enter'){kkCustomPickFirst();event.preventDefault()}">
+            <div id="kk-custom-drop" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:#fff;border:1px solid #e2e8f0;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.1);min-width:280px;max-height:160px;overflow-y:auto"></div>
+          </div>
+        </td>`
+      :`<td style="padding:6px 10px;font-size:11px;font-weight:700;color:#2563eb;position:sticky;left:40px;${rowBg||'background:#f8fafc'};border-right:1px solid #e2e8f0;white-space:nowrap">${mh.sku}</td>`;
+
+    // Cột Tên: dòng custom hiển thị tên đã chọn
+    const tenCell=isCustom
+      ?`<td style="padding:6px 10px;font-size:12px;position:sticky;left:130px;${rowBg||'background:#f8fafc'};border-right:2px solid #cbd5e1;min-width:200px;color:${customTen?'#1e293b':'#94a3b8'};font-style:${customTen?'normal':'italic'}">${customTen||'Chưa chọn sản phẩm…'}</td>`
+      :`<td style="padding:6px 10px;font-size:12px;position:sticky;left:130px;${rowBg||'background:#f8fafc'};border-right:2px solid #cbd5e1;min-width:200px">${mh.ten}</td>`;
+
+    return `<tr style="${rowBg};border-bottom:1px solid #e2e8f0" data-sku="${dataKey}">
       <td style="padding:6px 10px;text-align:center;font-size:11px;color:var(--t3);position:sticky;left:0;${rowBg||'background:#f8fafc'};border-right:1px solid #e2e8f0">${i+1}</td>
-      <td style="padding:6px 10px;font-size:11px;font-weight:700;color:#2563eb;position:sticky;left:40px;${rowBg||'background:#f8fafc'};border-right:1px solid #e2e8f0;white-space:nowrap">${mh.sku}</td>
-      <td style="padding:6px 10px;font-size:12px;position:sticky;left:130px;${rowBg||'background:#f8fafc'};border-right:2px solid #cbd5e1;min-width:200px">${mh.ten}</td>
-      <td style="padding:6px 10px;text-align:center;font-weight:600;font-size:12px;color:#1e293b;border-right:1px solid #e2e8f0">${tonHT}</td>
+      ${skuCell}
+      ${tenCell}
+      <td style="padding:6px 10px;text-align:center;font-weight:600;font-size:12px;color:#1e293b;border-right:1px solid #e2e8f0">${effectiveSku?tonHT:'—'}</td>
       <td style="padding:4px 6px;text-align:center;border-right:1px solid #e2e8f0">
-        <input type="number" value="${thucTe}" placeholder="—"
-          style="width:72px;padding:4px 6px;border:1px solid ${thucTe!==''?'#6ee7b7':'#e2e8f0'};border-radius:5px;font-size:12px;text-align:center;font-family:inherit;outline:none;background:${thucTe!==''?'#f0fdf4':'#fff'};font-weight:${thucTe!==''?'700':'400'}"
-          onchange="kkSetValue('${mh.sku}',this.value)"
+        <input type="number" value="${thucTe}" placeholder="—" ${isCustom&&!customSku?'disabled':''}
+          style="width:72px;padding:4px 6px;border:1px solid ${thucTe!==''?'#6ee7b7':'#e2e8f0'};border-radius:5px;font-size:12px;text-align:center;font-family:inherit;outline:none;background:${thucTe!==''?'#f0fdf4':'#fff'};font-weight:${thucTe!==''?'700':'400'};opacity:${isCustom&&!customSku?0.4:1}"
+          onchange="kkSetValue('${dataKey}',this.value)"
           onfocus="this.select()"
           onkeydown="kkNavCell(event,${i})">
       </td>
@@ -1665,7 +1737,7 @@ function renderKiemKho(){
         <input type="text" value="${ghiChu}" placeholder="Ghi chú…"
           style="width:100%;padding:4px 6px;border:1px solid transparent;border-radius:5px;font-size:11.5px;font-family:inherit;outline:none;background:transparent"
           onfocus="this.style.borderColor='#3b82f6';this.style.background='#fff'"
-          onblur="this.style.borderColor='transparent';this.style.background='transparent';kkSetNote('${mh.sku}',this.value)">
+          onblur="this.style.borderColor='transparent';this.style.background='transparent';kkSetNote('${dataKey}',this.value)">
       </td>
     </tr>`;
   }).join('');
@@ -1673,6 +1745,50 @@ function renderKiemKho(){
   // Cập nhật count chênh lệch
   const cc=document.getElementById('kk-chenh-count');
   if(cc) cc.textContent=chenhCount;
+}
+
+// Tìm kiếm sản phẩm cho dòng tự chọn
+function kkCustomSearch(q){
+  const drop=document.getElementById('kk-custom-drop');
+  if(!drop) return;
+  if(!q||q.length<1){drop.style.display='none';return;}
+  const list=DB.sanPham.filter(s=>!s._deleted&&(
+    s.sku?.toLowerCase().includes(q.toLowerCase())||
+    s.ten?.toLowerCase().includes(q.toLowerCase())
+  )).slice(0,10);
+  if(!list.length){drop.style.display='none';return;}
+  drop.innerHTML=list.map(s=>
+    `<div onclick="kkCustomSelect('${s.id}','${s.sku}',${JSON.stringify(s.ten)})"
+      style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9;display:flex;gap:8px;align-items:center"
+      onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background=''">
+      <span style="font-weight:700;color:#2563eb;min-width:80px">${s.sku}</span>
+      <span style="color:#1e293b">${s.ten}</span>
+      <span style="margin-left:auto;color:#94a3b8;font-size:11px">Tồn: ${s.ton||0}</span>
+    </div>`
+  ).join('');
+  drop.style.display='block';
+  // Click outside để đóng
+  setTimeout(()=>document.addEventListener('click',function c(e){if(!drop.contains(e.target)){drop.style.display='none';document.removeEventListener('click',c);}},true),0);
+}
+
+function kkCustomPickFirst(){
+  const drop=document.getElementById('kk-custom-drop');
+  if(drop&&drop.children.length>0) drop.children[0].click();
+}
+
+function kkCustomSelect(id, sku, ten){
+  if(!kkCurrentId){toast('Vui lòng chọn phiên kiểm trước!','error');return;}
+  const session=kkDB.sessions.find(s=>s.id===kkCurrentId);
+  if(!session){return;}
+  session.data['__CUSTOM_SKU__']=sku;
+  session.data['__CUSTOM_TEN__']=ten;
+  kkSaveDB();
+  const drop=document.getElementById('kk-custom-drop');
+  if(drop) drop.style.display='none';
+  const inp=document.getElementById('kk-custom-sku-inp');
+  if(inp) inp.value=sku;
+  renderKiemKho();
+  toast('✅ Đã chọn: '+sku+' – '+ten);
 }
 
 function kkSetValue(sku, val){
