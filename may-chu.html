@@ -1301,52 +1301,74 @@ function spOptions(){
   return DB.sanPham.map(s=>`<option value="${s.id}" data-price="${s.giaBan}" data-don="${s.don}">${s.sku} – ${s.ten}</option>`).join('');
 }
 
+function _buildSpCell(ctx, item, sp){
+  const calcFn=ctx==='pxk'?'calcPXK()':ctx==='bg'?'calcBG()':'calcPNK()';
+  const spSku=sp?sp.sku:(item?item.spId:'');
+  const tenHang=item?.ten||(sp?sp.ten:'');
+  if(spSku){
+    // Đã chọn SP: SKU badge (khóa) + tên (sửa được)
+    return `<div class="ac-sp-wrap" style="position:relative">
+      <div style="display:flex;align-items:center;gap:5px;padding:2px 0">
+        <span title="Mã hàng (không thể sửa)" style="font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 7px;border-radius:5px;white-space:nowrap;border:1px solid #bfdbfe;cursor:default;user-select:none">${spSku}</span>
+        <input type="text" class="ten-hang-inp" value="${tenHang}"
+          placeholder="Tên hàng…"
+          title="Có thể sửa tên hiển thị — mã hàng không thay đổi"
+          style="flex:1;min-width:80px;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px;color:#1e293b">
+      </div>
+      <input type="hidden" class="sp-id-inp" value="${item?item.spId:sp?.id||''}">
+    </div>`;
+  } else {
+    // Chưa chọn SP: ô search
+    return `<div class="ac-sp-wrap" style="position:relative">
+      <input type="text" value="" placeholder="Gõ mã hoặc tên hàng…" autocomplete="off"
+        oninput="spAcSearch(this,'${ctx}')" onfocus="spAcSearch(this,'${ctx}')"
+        style="width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px">
+      <input type="hidden" class="sp-id-inp" value="">
+    </div>`;
+  }
+}
+
+function _buildSpCell(ctx, item, sp){
+  const spSku=sp?sp.sku:(item?item.spId:'');
+  const tenHang=item?.ten||(sp?sp.ten:'');
+  if(spSku){
+    return `<div class="ac-sp-wrap" style="position:relative">
+      <div style="display:flex;align-items:center;gap:5px;padding:2px 0">
+        <span title="Mã hàng – không thể sửa" style="font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 7px;border-radius:5px;white-space:nowrap;border:1px solid #bfdbfe;cursor:default;user-select:none">${spSku}</span>
+        <input type="text" class="ten-hang-inp" value="${tenHang}"
+          placeholder="Tên hàng…" title="Sửa tên hiển thị – mã hàng không đổi"
+          style="flex:1;min-width:80px;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px;color:#1e293b">
+      </div>
+      <input type="hidden" class="sp-id-inp" value="${item?item.spId:sp?.id||''}">
+    </div>`;
+  }
+  return `<div class="ac-sp-wrap" style="position:relative">
+    <input type="text" value="" placeholder="Gõ mã hoặc tên hàng…" autocomplete="off"
+      oninput="spAcSearch(this,'${ctx}')" onfocus="spAcSearch(this,'${ctx}')"
+      style="width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px">
+    <input type="hidden" class="sp-id-inp" value="">
+  </div>`;
+}
+
 function addItemRow(ctx, item=null){
-  const tbodyId = ctx==='pxk'?'pxk-items':ctx==='bg'?'bg-items':'pnk-items';
-  const calcFn = ctx==='pxk'?'calcPXK()':ctx==='bg'?'calcBG()':'calcPNK()';
+  const tbodyId=ctx==='pxk'?'pxk-items':ctx==='bg'?'bg-items':'pnk-items';
+  const calcFn=ctx==='pxk'?'calcPXK()':ctx==='bg'?'calcBG()':'calcPNK()';
   const tbody=document.getElementById(tbodyId);
   const tr=document.createElement('tr');
   const sp=item?getSP(item.spId):null;
   const sl=item?item.sl:1;
-  const dp=item?item.donGia:(sp?sp.giaBan:0);
+  const dp=item?item.donGia:(sp?(ctx==='pnk'?getLastGiaNhap(item?.spId||''):sp.giaBan):0);
   const ck=item?item.ck:0;
   const val=sl*dp*(1-ck/100);
-  const spLabel=sp?(sp.sku+' – '+sp.ten):'';
-
-  if(ctx==='pnk'){
-    const dpNhap=item?item.donGia:(sp?getLastGiaNhap(item?.spId||''):0);
-    tr.innerHTML=`
-      <td>
-        <div class="ac-sp-wrap" style="position:relative">
-          <input type="text" value="${spLabel}" placeholder="Gõ mã hoặc tên hàng…" autocomplete="off"
-            oninput="spAcSearch(this,'${ctx}')" onfocus="spAcSearch(this,'${ctx}')"
-            style="width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px">
-          <input type="hidden" class="sp-id-inp" value="${item?item.spId:''}">
-        </div>
-      </td>
-      <td><input type="number" value="${sl}" min="1" class="qty-inp" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td><input type="number" value="${item?item.donGia:0}" class="price-inp" style="text-align:right;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td><input type="number" value="${ck}" min="0" max="100" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td style="text-align:right;font-weight:700;color:var(--blue)">${fmt(sl*(item?item.donGia:0)*(1-ck/100))} ₫</td>
-      <td style="text-align:center"><button class="ico-btn ico-del" onclick="this.closest('tr').remove();${calcFn}">🗑</button></td>`;
-  } else {
-    tr.innerHTML=`
-      <td>
-        <div class="ac-sp-wrap" style="position:relative">
-          <input type="text" value="${spLabel}" placeholder="Gõ mã hoặc tên hàng…" autocomplete="off"
-            oninput="spAcSearch(this,'${ctx}')" onfocus="spAcSearch(this,'${ctx}')"
-            style="width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px">
-          <input type="hidden" class="sp-id-inp" value="${item?item.spId:''}">
-        </div>
-      </td>
-      <td><input type="number" value="${sl}" min="1" class="qty-inp" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td><input type="number" value="${dp}" class="price-inp" style="text-align:right;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td><input type="number" value="${ck}" min="0" max="100" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td style="text-align:right;font-weight:700;color:var(--red)">${fmt(val)} ₫</td>
-      <td style="text-align:center"><button class="ico-btn ico-del" onclick="this.closest('tr').remove();${calcFn}">🗑</button></td>`;
-  }
+  const amtColor=ctx==='pnk'?'var(--blue)':'var(--red)';
+  tr.innerHTML=`
+    <td>${_buildSpCell(ctx,item,sp)}</td>
+    <td><input type="number" value="${sl}" min="1" class="qty-inp" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
+    <td><input type="number" value="${dp}" class="price-inp" style="text-align:right;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
+    <td><input type="number" value="${ck}" min="0" max="100" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
+    <td style="text-align:right;font-weight:700;color:${amtColor}">${fmt(val)} ₫</td>
+    <td style="text-align:center"><button class="ico-btn ico-del" onclick="this.closest('tr').remove();${calcFn}">🗑</button></td>`;
   tbody.appendChild(tr);
-  // close other drops on click outside in the table
   if(ctx==='pxk') calcPXK(); else if(ctx==='bg') calcBG(); else calcPNK();
 }
 
@@ -1377,7 +1399,10 @@ function getItemsFromTbody(tbodyId, hasCK=true){
     const sl=parseFloat(allNums[0]?.value)||0;
     const dp=parseFloat(allNums[1]?.value)||0;
     const ck=hasCK?(parseFloat(allNums[2]?.value)||0):0;
-    return {spId,ten:sp.ten||textInput?.value||'',don:sp.don||'Cái',sl,donGia:dp,ck};
+    // Lấy tên từ ten-hang-inp nếu user đã sửa, không thì từ SP
+    const tenInp=tr.querySelector('.ten-hang-inp');
+    const ten=tenInp?.value?.trim()||sp.ten||'';
+    return {spId,ten,don:sp.don||'Cái',sl,donGia:dp,ck};
   }).filter(x=>x.spId&&x.sl>0);
 }
 
@@ -1600,21 +1625,26 @@ function spAcSelect(el, spId, ctx){
   const sp=DB.sanPham.find(x=>x.id===spId);
   if(!sp) return;
   const wrap=el.closest('.ac-sp-wrap');
-  const input=wrap?.querySelector('input[type=text]');
-  const hidden=wrap?.querySelector('input[type=hidden]');
   const drop=wrap?.querySelector('.sp-drop-wrap');
-  if(input) input.value=sp.sku+' – '+sp.ten;
-  if(hidden) hidden.value=spId;
   if(drop) drop.classList.remove('open');
-  // fill price in same row
+  const hidden=wrap?.querySelector('input[type=hidden]');
+  if(hidden) hidden.value=spId;
+  // Chuyển ô search → SKU badge (khóa) + tên (sửa được)
+  const searchInp=wrap?.querySelector('input[type=text]:not(.ten-hang-inp)');
+  if(searchInp && !wrap.querySelector('.ten-hang-inp')){
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:5px;padding:2px 0';
+    div.innerHTML=`<span title="Mã hàng – không thể sửa" style="font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 7px;border-radius:5px;white-space:nowrap;border:1px solid #bfdbfe;cursor:default;user-select:none">${sp.sku}</span>
+      <input type="text" class="ten-hang-inp" value="${sp.ten}"
+        placeholder="Tên hàng…" title="Sửa tên hiển thị – mã hàng không đổi"
+        style="flex:1;min-width:80px;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px;color:#1e293b">`;
+    searchInp.replaceWith(div);
+  }
   const tr=wrap?.closest('tr');
   if(tr){
     const priceInput=tr.querySelector('.price-inp');
     if(priceInput) priceInput.value=(ctx==='pnk'?getLastGiaNhap(spId):sp.giaBan)||0;
-    // trigger calc after small delay to ensure DOM update
-    setTimeout(()=>{
-      if(ctx==='pxk') calcPXK(); else if(ctx==='bg') calcBG(); else calcPNK();
-    },10);
+    setTimeout(()=>{ if(ctx==='pxk') calcPXK(); else if(ctx==='bg') calcBG(); else calcPNK(); },10);
   }
 }
 
@@ -3153,10 +3183,18 @@ const BULK_SCHEMAS={
 };
 
 function openModalBulk(){
-  _bulkType='kh';
+  // Giữ tab cuối cùng đã chọn, không reset về 'kh'
   document.getElementById('bulk-paste').value='';
   document.getElementById('bulk-preview-wrap').style.display='none';
   document.getElementById('bulk-result').style.display='none';
+  // Sync active tab UI với _bulkType hiện tại
+  ['kh','sp','ncc'].forEach(t=>{
+    const el=document.getElementById('btab-'+t);
+    if(el){
+      el.style.borderBottomColor=t===_bulkType?'var(--blue)':'transparent';
+      el.style.color=t===_bulkType?'var(--blue)':'var(--t2)';
+    }
+  });
   updateBulkGuide();
   openMo('mo-bulk');
 }
@@ -3171,9 +3209,12 @@ function switchBulkTab(type){
     }
   });
   updateBulkGuide();
+  // Xóa paste + mapping cũ khi đổi tab để tránh nhầm lẫn
   document.getElementById('bulk-paste').value='';
   document.getElementById('bulk-preview-wrap').style.display='none';
   document.getElementById('bulk-result').style.display='none';
+  const mapEl=document.getElementById('bulk-mapping-fields');
+  if(mapEl) mapEl.innerHTML='';
 }
 
 function updateBulkGuide(){
