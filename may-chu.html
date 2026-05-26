@@ -3575,14 +3575,11 @@ function copyPyCmd(){
 
 function downloadPyServer(){
   const py=`#!/usr/bin/env python3
-# server.py – Máy Chủ Kế Toán Phú Anh (Python)
-# =============================================
-# Đặt file này cùng thư mục với ketoan-phu-anh.html
-# Mở CMD trong thư mục đó → gõ: python server.py
-# Không cần cài gì thêm – Python có sẵn!
-# =============================================
+# server.py – Máy Chủ Kế Toán Phú Anh
+# Chạy: python server.py
+# ======================================
 
-import json, os, socket, threading
+import json, os, socket
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime
 
@@ -3590,14 +3587,15 @@ PORT = 8765
 DATA_FILE = os.path.join(os.path.dirname(__file__), 'ketoan_data.json')
 latest_data = {}
 
-# Load dữ liệu cũ nếu có
 if os.path.exists(DATA_FILE):
     try:
         with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            latest_data = json.load(f)
+            saved = json.load(f)
+            # Hỗ trợ cả format cũ {data:{...}} và mới {...}
+            latest_data = saved.get('data', saved) if isinstance(saved, dict) else {}
         print(f'[OK] Đã đọc dữ liệu từ {DATA_FILE}')
     except Exception as e:
-        print(f'[WARN] Không đọc được file cũ: {e}')
+        print(f'[WARN] Không đọc được file: {e}')
 
 def get_local_ip():
     try:
@@ -3612,37 +3610,42 @@ def get_local_ip():
 LOCAL_IP = get_local_ip()
 
 def merge_arr(local_list, remote_list):
-    """Merge 2 lists by id, keep record with highest updatedAt"""
-    if not remote_list:
-        return local_list or []
+    """Merge 2 lists theo updatedAt. Tôn trọng _deleted flag."""
     merged = {}
     for item in (local_list or []):
-        merged[item.get('id','')] = item
+        if item and item.get('id'):
+            merged[item['id']] = item
     for item in (remote_list or []):
-        iid = item.get('id','')
+        if not item or not item.get('id'):
+            continue
+        iid = item['id']
         if iid not in merged:
             merged[iid] = item
         else:
-            local_ts = merged[iid].get('updatedAt', 0) or 0
+            local_ts  = merged[iid].get('updatedAt', 0) or 0
             remote_ts = item.get('updatedAt', 0) or 0
             if remote_ts > local_ts:
                 merged[iid] = item
+    # GIỮ _deleted records trong list để sync các máy biết
+    # Client tự lọc khi render UI
     return list(merged.values())
 
 def merge_data(local_data, remote_data):
-    """Merge toàn bộ DB: danh mục lấy remote, nghiệp vụ merge theo updatedAt"""
+    """Merge toàn bộ DB theo updatedAt — TẤT CẢ keys đều merge."""
     if not local_data:
         return remote_data or {}
+    if not remote_data:
+        return local_data
     result = dict(local_data)
-    # Danh mục: remote thắng (master từ máy chủ)
-    for key in ['sanPham','khachHang','nhaCungCap','nhanVien']:
+    all_keys = ['pxk','baoGia','pnk','quy','hoaDon',
+                'sanPham','khachHang','nhaCungCap','nhanVien']
+    for key in all_keys:
         if key in remote_data:
-            result[key] = remote_data[key]
-    # Nghiệp vụ: merge
-    for key in ['pxk','baoGia','pnk','quy','hoaDon']:
-        if key in remote_data:
-            result[key] = merge_arr(result.get(key,[]), remote_data.get(key,[]))
+            result[key] = merge_arr(result.get(key, []), remote_data.get(key, []))
     return result
+
+class Handler(BaseHTTPRequestHandler):
+
     def log_message(self, format, *args):
         pass  # Tắt log mặc định
 
@@ -3659,16 +3662,17 @@ def merge_data(local_data, remote_data):
     def do_GET(self):
         global latest_data
         if self.path == '/ping':
-            resp = json.dumps({'ok': True, 'name': 'PhuAnh-Server', 'ip': LOCAL_IP, 'time': str(datetime.now())})
+            resp = json.dumps({'ok': True, 'name': 'PhuAnh-Server', 'ip': LOCAL_IP})
             self._json(200, resp)
         elif self.path == '/load':
-            resp = json.dumps({'ok': True, 'version': os.path.getmtime(DATA_FILE) * 1000 if os.path.exists(DATA_FILE) else 0, 'data': latest_data})
+            resp = json.dumps({'ok': True, 'data': latest_data})
             self._json(200, resp)
         elif self.path == '/' or self.path == '/index.html':
-            self._serve_file('ketoan-phu-anh.html', 'text/html')
+            self._serve_file('index.html', 'text/html')
+        elif self.path.endswith('.html'):
+            self._serve_file(self.path.lstrip('/'), 'text/html')
         else:
-            self.send_response(404)
-            self.end_headers()
+            self.send_response(404); self.end_headers()
 
     def do_POST(self):
         global latest_data
@@ -3676,23 +3680,24 @@ def merge_data(local_data, remote_data):
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length)
             try:
-                payload = json.loads(body.decode('utf-8'))
+                payload  = json.loads(body.decode('utf-8'))
                 incoming = payload.get('data', {})
-                machine = payload.get('machine', '?')
-                # MERGE: không overwrite, hợp nhất theo updatedAt
+                machine  = payload.get('machine', '?')
+                # MERGE: tôn trọng _deleted, không bao giờ restore
                 merged = merge_data(latest_data, incoming)
                 latest_data = merged
-                save_payload = {'version': payload.get('version', 0), 'machine': machine, 'data': merged}
                 with open(DATA_FILE, 'w', encoding='utf-8') as f:
-                    json.dump(save_payload, f, ensure_ascii=False, indent=2)
-                print(f'[{datetime.now().strftime("%H:%M:%S")}] Merge & lưu từ {machine}')
-                self._json(200, json.dumps({'ok': True, 'msg': 'Đã merge & lưu!', 'data': merged}))
+                    json.dump({'version': payload.get('version', 0),
+                               'machine': machine, 'data': merged},
+                              f, ensure_ascii=False, indent=2)
+                ts = datetime.now().strftime('%H:%M:%S')
+                print(f'[{ts}] Saved from {machine}')
+                self._json(200, json.dumps({'ok': True, 'msg': 'OK', 'data': merged}))
             except Exception as e:
                 print(f'[ERR] {e}')
                 self._json(500, json.dumps({'ok': False, 'msg': str(e)}))
         else:
-            self.send_response(404)
-            self.end_headers()
+            self.send_response(404); self.end_headers()
 
     def _json(self, code, body):
         b = body.encode('utf-8')
@@ -3715,31 +3720,27 @@ def merge_data(local_data, remote_data):
             self.end_headers()
             self.wfile.write(content)
         else:
-            self.send_response(404)
-            self.end_headers()
+            self.send_response(404); self.end_headers()
 
 if __name__ == '__main__':
     server = HTTPServer(('0.0.0.0', PORT), Handler)
     print('=' * 50)
-    print('  Máy Chủ Kế Toán Phú Anh - Python Server')
+    print('  Ke Toan Phu Anh - Server LAN')
     print('=' * 50)
-    print(f'  IP Máy Này : {LOCAL_IP}')
-    print(f'  Port       : {PORT}')
-    print(f'  Địa chỉ    : http://{LOCAL_IP}:{PORT}')
-    print()
-    print('  Máy Client: nhập IP trên vào ô "IP Máy Chủ"')
-    print('  Nhấn Ctrl+C để dừng server')
+    print(f'  IP : {LOCAL_IP}:{PORT}')
+    print(f'  URL: http://{LOCAL_IP}:{PORT}')
+    print('  Ctrl+C de dung')
     print('=' * 50)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print('\\nServer đã dừng.')
+        print('\\nServer da dung.')
 `;
   const blob=new Blob([py],{type:'text/plain;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download='server.py';a.click();
   URL.revokeObjectURL(url);
-  toast('📥 Đã tải server.py – Chạy: python server.py');
+  toast('📥 Đã tải server.py mới – cần chạy lại!');
 }
 
 function downloadSetupGuide(){
