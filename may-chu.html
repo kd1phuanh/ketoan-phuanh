@@ -1738,8 +1738,13 @@ function xoaPXK(id){
   if(p&&isPXKLocked(p)){toast('Phiếu đã bị khóa bởi hóa đơn đã ký – không thể xóa!','error');return;}
   confirm2('Chuyển vào Thùng Rác','Phiếu '+id+' sẽ vào thùng rác. Có thể khôi phục trong 30 ngày.',()=>{
     trashMove('pxk',id);
-    DB.pxk=DB.pxk.filter(x=>x.id!==id);
+    // Soft-delete: đánh dấu _deleted+updatedAt thay vì .filter() để server biết
+    const idx=DB.pxk.findIndex(x=>x.id===id);
+    if(idx>=0) DB.pxk[idx]={...DB.pxk[idx],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển '+id+' vào thùng rác');
+    if(window._autoSave) window._autoSave();
+    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
+    if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),400);
     renderPXKTable();
   });
 }
@@ -1764,7 +1769,7 @@ function renderPXKTable(){
   const q=(document.getElementById('pxk-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('pxk-tbody');
   if(!tbody) return;
-  const list=DB.pxk.filter(p=>!q||p.ma.toLowerCase().includes(q)||(getKH(p.khId).ten||'').toLowerCase().includes(q));
+  const list=DB.pxk.filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q)||(getKH(p.khId).ten||'').toLowerCase().includes(q)));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu xuất kho nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(p=>{
     const kh=getKH(p.khId);
@@ -1852,8 +1857,11 @@ function saveBaoGia(){
 function xoaBaoGia(id){
   confirm2('Chuyển vào Thùng Rác','Báo giá '+id+' sẽ vào thùng rác.',()=>{
     trashMove('baoGia',id);
-    DB.baoGia=DB.baoGia.filter(x=>x.id!==id);
+    const idx=DB.baoGia.findIndex(x=>x.id===id);
+    if(idx>=0) DB.baoGia[idx]={...DB.baoGia[idx],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển '+id+' vào thùng rác');
+    if(window._autoSave) window._autoSave();
+    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
     renderBaoGiaTable();
   });
 }
@@ -1862,7 +1870,7 @@ function renderBaoGiaTable(){
   const q=(document.getElementById('bg-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('bg-tbody');
   if(!tbody) return;
-  const list=DB.baoGia.filter(b=>!q||b.ma.toLowerCase().includes(q)||(getKH(b.khId).ten||'').toLowerCase().includes(q));
+  const list=DB.baoGia.filter(b=>!b._deleted&&(!q||b.ma.toLowerCase().includes(q)||(getKH(b.khId).ten||'').toLowerCase().includes(q)));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-ico">📋</div><p>Chưa có báo giá nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(b=>{
     const kh=getKH(b.khId);
@@ -2231,7 +2239,9 @@ function renderHoaDon(){
   const tbody=document.getElementById('hd-tbody');
   if(!tbody) return;
   if(!DB.hoaDon.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">🧾</div><p>Chưa có hóa đơn nào. Vào tab "Gom Bảng Kê VAT" để tạo.</p></div></td></tr>`;return;}
-  tbody.innerHTML=DB.hoaDon.map(h=>{
+  const activeHD=DB.hoaDon.filter(h=>!h._deleted);
+  if(!activeHD.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">🧾</div><p>Chưa có hóa đơn nào.</p></div></td></tr>`;return;}
+  tbody.innerHTML=activeHD.map(h=>{
     const kh=getKH(h.khId);
     const signed=h.trangThai==='Đã Ký';
     const bdgClass=signed?'bdg-signed':'bdg-draft';
@@ -2359,10 +2369,12 @@ function xoaHoaDon(id){
   confirm2('Chuyển vào Thùng Rác','Hóa đơn '+id+' sẽ vào thùng rác.',()=>{
     trashMove('hoaDon',id);
     if(h&&h.pxkIds) h.pxkIds.forEach(pid=>{const p=DB.pxk.find(x=>x.id===pid);if(p)p.hoadonVAT='Chưa Xuất';});
-    DB.hoaDon=DB.hoaDon.filter(x=>x.id!==id);
+    const idx=DB.hoaDon.findIndex(x=>x.id===id);
+    if(idx>=0) DB.hoaDon[idx]={...DB.hoaDon[idx],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển '+id+' vào thùng rác');
-    renderHoaDon();
-    renderPXKTable();
+    if(window._autoSave) window._autoSave();
+    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
+    renderHoaDon(); renderPXKTable();
   });
 }
 
@@ -2525,8 +2537,11 @@ function xoaPNK(id){
   if(p&&p.soSach==='Ghi Số'){toast('Phiếu đã ghi sổ – nhấn "Bỏ Ghi Sổ" trước!','error');return;}
   confirm2('Chuyển vào Thùng Rác','Phiếu '+id+' sẽ vào thùng rác.',()=>{
     trashMove('pnk',id);
-    DB.pnk=DB.pnk.filter(x=>x.id!==id);
+    const idx=DB.pnk.findIndex(x=>x.id===id);
+    if(idx>=0) DB.pnk[idx]={...DB.pnk[idx],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển '+id+' vào thùng rác');
+    if(window._autoSave) window._autoSave();
+    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
     renderPNKTable();
   });
 }
@@ -2562,7 +2577,7 @@ function renderPNKTable(){
   const q=(document.getElementById('pnk-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('pnk-tbody');
   if(!tbody) return;
-  const list=DB.pnk.filter(p=>!q||p.ma.toLowerCase().includes(q));
+  const list=DB.pnk.filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q)));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu nhập kho nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(p=>{
     const ncc=getNCC(p.nccId);
@@ -3805,9 +3820,15 @@ function mergeArr(local, remote){
       if(remoteTs>localTs) map[x.id]={...x};
     }
   });
-  // Lọc bỏ record đã xóa mềm
-  return Object.values(map).filter(x=>!x._deleted);
+  // GIỮ _deleted trong mảng để sync được — render tự lọc
+  return Object.values(map);
 }
+
+// Lấy mảng đang active (không bị xóa) để render UI
+function activeArr(arr){ return (arr||[]).filter(x=>!x._deleted); }
+
+// Lọc _deleted để render UI — dùng thay vì trực tiếp dùng DB.xxx
+function activeArr(arr){ return (arr||[]).filter(x=>!x._deleted); }
 
 // Xóa mềm: giữ trong DB với _deleted=true để sync biết
 function softDelete(arr, id){
@@ -3820,10 +3841,11 @@ function stamp(obj){return{...obj,updatedAt:Date.now()};}
 
 // Snapshot luôn bao gồm cả record _deleted để sync các máy khác biết
 function getDBSnapshot(){
-  const allSP=[...DB.sanPham,...(DB._deletedSP||[])];
-  const allKH=[...DB.khachHang,...(DB._deletedKH||[])];
-  return {pxk:DB.pxk,baoGia:DB.baoGia,pnk:DB.pnk,quy:DB.quy,hoaDon:DB.hoaDon,
-    sanPham:DB.sanPham,khachHang:DB.khachHang,nhaCungCap:DB.nhaCungCap,nhanVien:DB.nhanVien};
+  // Bao gồm TẤT CẢ records kể cả _deleted để server/Drive biết và không restore lại
+  return {
+    pxk:DB.pxk, baoGia:DB.baoGia, pnk:DB.pnk, quy:DB.quy, hoaDon:DB.hoaDon,
+    sanPham:DB.sanPham, khachHang:DB.khachHang, nhaCungCap:DB.nhaCungCap, nhanVien:DB.nhanVien
+  };
 }
 
 function applyRemoteData(remote){
@@ -4386,34 +4408,27 @@ function _trashDoRestore(item){
   const t = item.type;
   const d = item.data;
   if(!d) return;
-  // Xóa _deleted flag nếu có, reset updatedAt
-  const restored = {...d, _deleted:false, updatedAt:Date.now()};
-  if(t==='pxk'){
-    if(!DB.pxk.find(x=>x.id===d.id)) DB.pxk.unshift(restored);
-    renderPXKTable(); renderDashboard();
-  } else if(t==='baoGia'){
-    if(!DB.baoGia.find(x=>x.id===d.id)) DB.baoGia.unshift(restored);
-    renderBaoGiaTable();
-  } else if(t==='pnk'){
-    if(!DB.pnk.find(x=>x.id===d.id)) DB.pnk.unshift(restored);
-    renderPNKTable();
-  } else if(t==='hoaDon'){
-    if(!DB.hoaDon.find(x=>x.id===d.id)) DB.hoaDon.unshift(restored);
-    renderHoaDon();
-  } else if(t==='sp'){
-    if(!DB.sanPham.find(x=>x.id===d.id)) DB.sanPham.unshift(restored);
-    renderDMSanPham();
-  } else if(t==='kh'){
-    if(!DB.khachHang.find(x=>x.id===d.id)) DB.khachHang.unshift(restored);
-    renderDMKH();
-  } else if(t==='ncc'){
-    if(!DB.nhaCungCap.find(x=>x.id===d.id)) DB.nhaCungCap.unshift(restored);
-    renderAllDM();
-  } else if(t==='nv'){
-    if(!DB.nhanVien.find(x=>x.id===d.id)) DB.nhanVien.unshift(restored);
-    renderAllDM();
-  }
+  // Khôi phục: clear _deleted flag, reset updatedAt
+  const restoreInArr=(arr)=>{
+    const idx=arr.findIndex(x=>x.id===d.id);
+    if(idx>=0){
+      arr[idx]={...arr[idx],_deleted:false,updatedAt:Date.now()};
+    } else {
+      arr.unshift({...d,_deleted:false,updatedAt:Date.now()});
+    }
+  };
+  if(t==='pxk'){restoreInArr(DB.pxk);renderPXKTable();renderDashboard();}
+  else if(t==='baoGia'){restoreInArr(DB.baoGia);renderBaoGiaTable();}
+  else if(t==='pnk'){restoreInArr(DB.pnk);renderPNKTable();}
+  else if(t==='hoaDon'){restoreInArr(DB.hoaDon);renderHoaDon();}
+  else if(t==='sp'){restoreInArr(DB.sanPham);renderDMSanPham();}
+  else if(t==='kh'){restoreInArr(DB.khachHang);renderDMKH();}
+  else if(t==='ncc'){restoreInArr(DB.nhaCungCap);renderAllDM();}
+  else if(t==='nv'){restoreInArr(DB.nhanVien);renderAllDM();}
   if(window._autoSave) window._autoSave();
+  // Push lên server để các máy khác biết
+  if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
+  if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),400);
 }
 
 // Checkbox chọn tất cả
