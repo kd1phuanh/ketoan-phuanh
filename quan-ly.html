@@ -479,7 +479,10 @@ select{font-family:inherit}
     <div class="dm-card">
       <div class="dm-head">
         <div class="dm-title">🛍️ Sản Phẩm &amp; Bảng Giá</div>
-        <button class="btn btn-primary btn-sm" onclick="openModalDM('sp',null)">+ Thêm</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-orange btn-sm" onclick="openModalUpdateTon()">📊 Cập Nhật Tồn Kho</button>
+          <button class="btn btn-primary btn-sm" onclick="openModalDM('sp',null)">+ Thêm</button>
+        </div>
       </div>
       <input class="dm-search" placeholder="Tìm sản phẩm / SKU…" oninput="renderDMSanPham(this.value)">
       <div style="overflow-x:auto">
@@ -1247,52 +1250,74 @@ function spOptions(){
   return DB.sanPham.map(s=>`<option value="${s.id}" data-price="${s.giaBan}" data-don="${s.don}">${s.sku} – ${s.ten}</option>`).join('');
 }
 
+function _buildSpCell(ctx, item, sp){
+  const calcFn=ctx==='pxk'?'calcPXK()':ctx==='bg'?'calcBG()':'calcPNK()';
+  const spSku=sp?sp.sku:(item?item.spId:'');
+  const tenHang=item?.ten||(sp?sp.ten:'');
+  if(spSku){
+    // Đã chọn SP: SKU badge (khóa) + tên (sửa được)
+    return `<div class="ac-sp-wrap" style="position:relative">
+      <div style="display:flex;align-items:center;gap:5px;padding:2px 0">
+        <span title="Mã hàng (không thể sửa)" style="font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 7px;border-radius:5px;white-space:nowrap;border:1px solid #bfdbfe;cursor:default;user-select:none">${spSku}</span>
+        <input type="text" class="ten-hang-inp" value="${tenHang}"
+          placeholder="Tên hàng…"
+          title="Có thể sửa tên hiển thị — mã hàng không thay đổi"
+          style="flex:1;min-width:80px;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px;color:#1e293b">
+      </div>
+      <input type="hidden" class="sp-id-inp" value="${item?item.spId:sp?.id||''}">
+    </div>`;
+  } else {
+    // Chưa chọn SP: ô search
+    return `<div class="ac-sp-wrap" style="position:relative">
+      <input type="text" value="" placeholder="Gõ mã hoặc tên hàng…" autocomplete="off"
+        oninput="spAcSearch(this,'${ctx}')" onfocus="spAcSearch(this,'${ctx}')"
+        style="width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px">
+      <input type="hidden" class="sp-id-inp" value="">
+    </div>`;
+  }
+}
+
+function _buildSpCell(ctx, item, sp){
+  const spSku=sp?sp.sku:(item?item.spId:'');
+  const tenHang=item?.ten||(sp?sp.ten:'');
+  if(spSku){
+    return `<div class="ac-sp-wrap" style="position:relative">
+      <div style="display:flex;align-items:center;gap:5px;padding:2px 0">
+        <span title="Mã hàng – không thể sửa" style="font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 7px;border-radius:5px;white-space:nowrap;border:1px solid #bfdbfe;cursor:default;user-select:none">${spSku}</span>
+        <input type="text" class="ten-hang-inp" value="${tenHang}"
+          placeholder="Tên hàng…" title="Sửa tên hiển thị – mã hàng không đổi"
+          style="flex:1;min-width:80px;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px;color:#1e293b">
+      </div>
+      <input type="hidden" class="sp-id-inp" value="${item?item.spId:sp?.id||''}">
+    </div>`;
+  }
+  return `<div class="ac-sp-wrap" style="position:relative">
+    <input type="text" value="" placeholder="Gõ mã hoặc tên hàng…" autocomplete="off"
+      oninput="spAcSearch(this,'${ctx}')" onfocus="spAcSearch(this,'${ctx}')"
+      style="width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px">
+    <input type="hidden" class="sp-id-inp" value="">
+  </div>`;
+}
+
 function addItemRow(ctx, item=null){
-  const tbodyId = ctx==='pxk'?'pxk-items':ctx==='bg'?'bg-items':'pnk-items';
-  const calcFn = ctx==='pxk'?'calcPXK()':ctx==='bg'?'calcBG()':'calcPNK()';
+  const tbodyId=ctx==='pxk'?'pxk-items':ctx==='bg'?'bg-items':'pnk-items';
+  const calcFn=ctx==='pxk'?'calcPXK()':ctx==='bg'?'calcBG()':'calcPNK()';
   const tbody=document.getElementById(tbodyId);
   const tr=document.createElement('tr');
   const sp=item?getSP(item.spId):null;
   const sl=item?item.sl:1;
-  const dp=item?item.donGia:(sp?sp.giaBan:0);
+  const dp=item?item.donGia:(sp?(ctx==='pnk'?getLastGiaNhap(item?.spId||''):sp.giaBan):0);
   const ck=item?item.ck:0;
   const val=sl*dp*(1-ck/100);
-  const spLabel=sp?(sp.sku+' – '+sp.ten):'';
-
-  if(ctx==='pnk'){
-    const dpNhap=item?item.donGia:(sp?getLastGiaNhap(item?.spId||''):0);
-    tr.innerHTML=`
-      <td>
-        <div class="ac-sp-wrap" style="position:relative">
-          <input type="text" value="${spLabel}" placeholder="Gõ mã hoặc tên hàng…" autocomplete="off"
-            oninput="spAcSearch(this,'${ctx}')" onfocus="spAcSearch(this,'${ctx}')"
-            style="width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px">
-          <input type="hidden" class="sp-id-inp" value="${item?item.spId:''}">
-        </div>
-      </td>
-      <td><input type="number" value="${sl}" min="1" class="qty-inp" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td><input type="number" value="${item?item.donGia:0}" class="price-inp" style="text-align:right;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td><input type="number" value="${ck}" min="0" max="100" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td style="text-align:right;font-weight:700;color:var(--blue)">${fmt(sl*(item?item.donGia:0)*(1-ck/100))} ₫</td>
-      <td style="text-align:center"><button class="ico-btn ico-del" onclick="this.closest('tr').remove();${calcFn}">🗑</button></td>`;
-  } else {
-    tr.innerHTML=`
-      <td>
-        <div class="ac-sp-wrap" style="position:relative">
-          <input type="text" value="${spLabel}" placeholder="Gõ mã hoặc tên hàng…" autocomplete="off"
-            oninput="spAcSearch(this,'${ctx}')" onfocus="spAcSearch(this,'${ctx}')"
-            style="width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px">
-          <input type="hidden" class="sp-id-inp" value="${item?item.spId:''}">
-        </div>
-      </td>
-      <td><input type="number" value="${sl}" min="1" class="qty-inp" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td><input type="number" value="${dp}" class="price-inp" style="text-align:right;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td><input type="number" value="${ck}" min="0" max="100" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
-      <td style="text-align:right;font-weight:700;color:var(--red)">${fmt(val)} ₫</td>
-      <td style="text-align:center"><button class="ico-btn ico-del" onclick="this.closest('tr').remove();${calcFn}">🗑</button></td>`;
-  }
+  const amtColor=ctx==='pnk'?'var(--blue)':'var(--red)';
+  tr.innerHTML=`
+    <td>${_buildSpCell(ctx,item,sp)}</td>
+    <td><input type="number" value="${sl}" min="1" class="qty-inp" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
+    <td><input type="number" value="${dp}" class="price-inp" style="text-align:right;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
+    <td><input type="number" value="${ck}" min="0" max="100" style="text-align:center;width:100%;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px" oninput="${calcFn}"></td>
+    <td style="text-align:right;font-weight:700;color:${amtColor}">${fmt(val)} ₫</td>
+    <td style="text-align:center"><button class="ico-btn ico-del" onclick="this.closest('tr').remove();${calcFn}">🗑</button></td>`;
   tbody.appendChild(tr);
-  // close other drops on click outside in the table
   if(ctx==='pxk') calcPXK(); else if(ctx==='bg') calcBG(); else calcPNK();
 }
 
@@ -1323,7 +1348,10 @@ function getItemsFromTbody(tbodyId, hasCK=true){
     const sl=parseFloat(allNums[0]?.value)||0;
     const dp=parseFloat(allNums[1]?.value)||0;
     const ck=hasCK?(parseFloat(allNums[2]?.value)||0):0;
-    return {spId,ten:sp.ten||textInput?.value||'',don:sp.don||'Cái',sl,donGia:dp,ck};
+    // Lấy tên từ ten-hang-inp nếu user đã sửa, không thì từ SP
+    const tenInp=tr.querySelector('.ten-hang-inp');
+    const ten=tenInp?.value?.trim()||sp.ten||'';
+    return {spId,ten,don:sp.don||'Cái',sl,donGia:dp,ck};
   }).filter(x=>x.spId&&x.sl>0);
 }
 
@@ -1546,21 +1574,26 @@ function spAcSelect(el, spId, ctx){
   const sp=DB.sanPham.find(x=>x.id===spId);
   if(!sp) return;
   const wrap=el.closest('.ac-sp-wrap');
-  const input=wrap?.querySelector('input[type=text]');
-  const hidden=wrap?.querySelector('input[type=hidden]');
   const drop=wrap?.querySelector('.sp-drop-wrap');
-  if(input) input.value=sp.sku+' – '+sp.ten;
-  if(hidden) hidden.value=spId;
   if(drop) drop.classList.remove('open');
-  // fill price in same row
+  const hidden=wrap?.querySelector('input[type=hidden]');
+  if(hidden) hidden.value=spId;
+  // Chuyển ô search → SKU badge (khóa) + tên (sửa được)
+  const searchInp=wrap?.querySelector('input[type=text]:not(.ten-hang-inp)');
+  if(searchInp && !wrap.querySelector('.ten-hang-inp')){
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:5px;padding:2px 0';
+    div.innerHTML=`<span title="Mã hàng – không thể sửa" style="font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 7px;border-radius:5px;white-space:nowrap;border:1px solid #bfdbfe;cursor:default;user-select:none">${sp.sku}</span>
+      <input type="text" class="ten-hang-inp" value="${sp.ten}"
+        placeholder="Tên hàng…" title="Sửa tên hiển thị – mã hàng không đổi"
+        style="flex:1;min-width:80px;border:none;outline:none;font-size:12.5px;background:transparent;font-family:inherit;padding:2px 4px;color:#1e293b">`;
+    searchInp.replaceWith(div);
+  }
   const tr=wrap?.closest('tr');
   if(tr){
     const priceInput=tr.querySelector('.price-inp');
     if(priceInput) priceInput.value=(ctx==='pnk'?getLastGiaNhap(spId):sp.giaBan)||0;
-    // trigger calc after small delay to ensure DOM update
-    setTimeout(()=>{
-      if(ctx==='pxk') calcPXK(); else if(ctx==='bg') calcBG(); else calcPNK();
-    },10);
+    setTimeout(()=>{ if(ctx==='pxk') calcPXK(); else if(ctx==='bg') calcBG(); else calcPNK(); },10);
   }
 }
 
@@ -3099,10 +3132,18 @@ const BULK_SCHEMAS={
 };
 
 function openModalBulk(){
-  _bulkType='kh';
+  // Giữ tab cuối cùng đã chọn, không reset về 'kh'
   document.getElementById('bulk-paste').value='';
   document.getElementById('bulk-preview-wrap').style.display='none';
   document.getElementById('bulk-result').style.display='none';
+  // Sync active tab UI với _bulkType hiện tại
+  ['kh','sp','ncc'].forEach(t=>{
+    const el=document.getElementById('btab-'+t);
+    if(el){
+      el.style.borderBottomColor=t===_bulkType?'var(--blue)':'transparent';
+      el.style.color=t===_bulkType?'var(--blue)':'var(--t2)';
+    }
+  });
   updateBulkGuide();
   openMo('mo-bulk');
 }
@@ -3117,9 +3158,12 @@ function switchBulkTab(type){
     }
   });
   updateBulkGuide();
+  // Xóa paste + mapping cũ khi đổi tab để tránh nhầm lẫn
   document.getElementById('bulk-paste').value='';
   document.getElementById('bulk-preview-wrap').style.display='none';
   document.getElementById('bulk-result').style.display='none';
+  const mapEl=document.getElementById('bulk-mapping-fields');
+  if(mapEl) mapEl.innerHTML='';
 }
 
 function updateBulkGuide(){
@@ -4090,7 +4134,7 @@ function trashRestoreOne(trId){
   toast('✅ Đã khôi phục: '+item.label);
 }
 
-// Xóa vĩnh viễn 1 item — chỉ máy chủ mới được làm
+// Xóa vĩnh viễn 1 item — chỉ máy chủ
 function trashDeleteOne(trId){toast('Chỉ máy chủ chính mới được xóa vĩnh viễn','error');}
 
 // Khôi phục items đã chọn
@@ -4108,10 +4152,12 @@ function trashRestoreSelected(){
   toast('✅ Đã khôi phục '+ids.length+' mục!');
 }
 
-// Xóa items đã chọn — chỉ máy chủ mới được làm
+// Xóa items đã chọn
+// Xóa items đã chọn — chỉ máy chủ
 function trashDeleteSelected(){toast('Chỉ máy chủ chính mới được xóa vĩnh viễn','error');}
 
-// Xóa tất cả vĩnh viễn — chỉ máy chủ mới được làm
+
+// Xóa tất cả vĩnh viễn
 function trashEmptyAll(){toast('Chỉ máy chủ chính mới được xóa vĩnh viễn','error');}
 
 // Thực hiện khôi phục về đúng mảng DB
@@ -4178,6 +4224,188 @@ function trashClearSelection(){
   const all = document.getElementById('trash-chk-all');
   if(all) all.checked=false;
   trashHideActionBar();
+}
+
+// ============================================================
+// CẬP NHẬT TỒN KHO HÀNG LOẠT
+// ============================================================
+let _tonParsed = []; // [{sku, newTon, sp (hoặc null)}]
+
+_tonMode='ton'; // 'ton' | 'gia' | 'all'
+
+function tonSetMode(mode){
+  _tonMode=mode;
+  // Update button styles
+  ['ton','gia','all'].forEach(m=>{
+    const btn=document.getElementById('ton-mode-btn-'+m);
+    if(btn) btn.style.cssText=m===mode
+      ?'background:var(--orange);color:#fff;font-weight:700'
+      :'';
+    if(m===mode) btn.className='btn btn-sm';
+    else btn.className='btn btn-outline btn-sm';
+  });
+  // Show/hide cột giá
+  const cfgTon=document.getElementById('ton-cfg-ton');
+  const cfgGia=document.getElementById('ton-cfg-gia');
+  if(cfgTon) cfgTon.style.display=(mode==='ton'||mode==='all')?'flex':'none';
+  if(cfgGia) cfgGia.style.display=(mode==='gia'||mode==='all')?'flex':'none';
+  tonParsePreview();
+}
+
+function openModalUpdateTon(){
+  document.getElementById('ton-paste-area').value='';
+  document.getElementById('ton-preview-wrap').style.display='none';
+  document.getElementById('ton-preview-tbody').innerHTML='';
+  document.getElementById('ton-parse-summary').textContent='';
+  document.getElementById('ton-apply-summary').textContent='';
+  document.getElementById('ton-apply-btn').disabled=true;
+  document.getElementById('ton-not-found-wrap').style.display='none';
+  _tonParsed=[];
+  _tonMode='ton';
+  tonSetMode('ton');
+  openMo('mo-update-ton');
+}
+
+function tonParsePreview(){
+  const raw=document.getElementById('ton-paste-area').value.trim();
+  if(!raw){
+    document.getElementById('ton-preview-wrap').style.display='none';
+    document.getElementById('ton-parse-summary').textContent='';
+    document.getElementById('ton-apply-btn').disabled=true;
+    return;
+  }
+  const colSku=parseInt(document.getElementById('ton-col-sku').value)||0;
+  const colTon=parseInt(document.getElementById('ton-col-ton')?.value??1);
+  const colGiaNhap=parseInt(document.getElementById('ton-col-gianhap')?.value??-1);
+  const colGiaBan=parseInt(document.getElementById('ton-col-giabanle')?.value??-1);
+
+  const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  const found=[], notFound=[];
+
+  lines.forEach(line=>{
+    const sep=line.includes('\t')?'\t':',';
+    const cols=line.split(sep).map(c=>c.trim().replace(/^"|"$/g,'').replace(/[,\.]/g,(m,i,s)=>{
+      // Giữ dấu chấm thập phân nhưng bỏ dấu phân cách nghìn
+      const isDecimal=s.indexOf('.')===s.lastIndexOf('.');
+      return (m==='.'&&isDecimal)?m:'';
+    }));
+    const sku=(cols[colSku]||'').trim();
+    if(!sku) return;
+
+    const sp=DB.sanPham.find(s=>
+      s.sku?.toLowerCase()===sku.toLowerCase()||
+      s.id?.toLowerCase()===sku.toLowerCase()
+    );
+    if(!sp){notFound.push(sku);return;}
+
+    const entry={sku,sp};
+    if(_tonMode==='ton'||_tonMode==='all'){
+      const v=parseFloat((cols[colTon]||'').replace(/[^\d.]/g,''));
+      entry.newTon=isNaN(v)?null:v;
+    }
+    if(_tonMode==='gia'||_tonMode==='all'){
+      if(colGiaNhap>=0){
+        const v=parseFloat((cols[colGiaNhap]||'').replace(/[^\d.]/g,''));
+        if(!isNaN(v)) entry.newGiaNhap=v;
+      }
+      if(colGiaBan>=0){
+        const v=parseFloat((cols[colGiaBan]||'').replace(/[^\d.]/g,''));
+        if(!isNaN(v)) entry.newGiaBan=v;
+      }
+    }
+    found.push(entry);
+  });
+
+  _tonParsed=found;
+  const matched=found.length;
+
+  // Summary
+  document.getElementById('ton-parse-summary').innerHTML=
+    `<span style="color:var(--green);font-weight:700">✅ Khớp: ${matched}</span>`+
+    (notFound.length?` &nbsp;|&nbsp; <span style="color:var(--red)">❌ Không thấy: ${notFound.length}</span>`:'')+
+    ` &nbsp;|&nbsp; Tổng: ${lines.length} dòng`;
+
+  // Build preview header
+  const thead=document.getElementById('ton-preview-thead');
+  if(thead){
+    let ths='<tr><th>SKU</th><th>Tên Sản Phẩm</th>';
+    if(_tonMode==='ton'||_tonMode==='all') ths+='<th class="tr">Tồn Cũ</th><th class="tr">Tồn Mới</th><th class="tc">±</th>';
+    if(_tonMode==='gia'||_tonMode==='all') ths+='<th class="tr">Giá Nhập Mới</th><th class="tr">Giá Bán Mới</th>';
+    ths+='</tr>';
+    thead.innerHTML=ths;
+  }
+
+  // Preview rows
+  const tbody=document.getElementById('ton-preview-tbody');
+  tbody.innerHTML=found.map(({sku,sp,newTon,newGiaNhap,newGiaBan})=>{
+    let cells=`<td style="font-weight:700;color:var(--blue);font-size:12px">${sku}</td>`;
+    cells+=`<td style="font-size:12px">${sp.ten}</td>`;
+    if(_tonMode==='ton'||_tonMode==='all'){
+      const diff=newTon!=null?(newTon-(sp.ton||0)):null;
+      const ds=diff>0?'color:var(--green)':diff<0?'color:var(--red)':'color:var(--t3)';
+      cells+=`<td class="tr" style="color:var(--t3);font-size:12px">${sp.ton||0}</td>`;
+      cells+=`<td class="tr" style="font-weight:700;font-size:13px">${newTon!=null?newTon:'—'}</td>`;
+      cells+=`<td class="tc" style="${ds};font-size:12px;font-weight:600">${diff!=null?(diff>0?'+'+diff:diff===0?'✓':diff):'—'}</td>`;
+    }
+    if(_tonMode==='gia'||_tonMode==='all'){
+      cells+=`<td class="tr" style="font-size:12px;color:${newGiaNhap!=null?'var(--green)':'var(--t3)'}">${newGiaNhap!=null?fmt(newGiaNhap)+'₫':'—'}</td>`;
+      cells+=`<td class="tr" style="font-size:12px;color:${newGiaBan!=null?'var(--green)':'var(--t3)'}">${newGiaBan!=null?fmt(newGiaBan)+'₫':'—'}</td>`;
+    }
+    return `<tr>${cells}</tr>`;
+  }).join('')+(found.length===0?'<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--t3)">Không tìm thấy sản phẩm nào khớp</td></tr>':'');
+
+  document.getElementById('ton-preview-wrap').style.display=matched>0?'block':'none';
+  document.getElementById('ton-preview-title').textContent=`(${matched} sản phẩm)`;
+
+  if(notFound.length>0){
+    document.getElementById('ton-not-found-wrap').style.display='block';
+    const show=notFound.slice(0,20);
+    document.getElementById('ton-not-found-list').textContent=show.join(', ')+(notFound.length>20?` … và ${notFound.length-20} SKU khác`:'');
+  } else {
+    document.getElementById('ton-not-found-wrap').style.display='none';
+  }
+
+  const btn=document.getElementById('ton-apply-btn');
+  btn.disabled=matched===0;
+  document.getElementById('ton-apply-summary').textContent=
+    matched>0?`Sẽ cập nhật ${matched} sản phẩm`:'';
+}
+
+function tonApplyUpdate(){
+  if(!_tonParsed.length){toast('Không có dữ liệu!','error');return;}
+  const now=Date.now();
+  let countTon=0,countGia=0;
+  _tonParsed.forEach(({sp,newTon,newGiaNhap,newGiaBan})=>{
+    sp.updatedAt=now;
+    if(newTon!=null){sp.ton=newTon;countTon++;}
+    if(newGiaNhap!=null){sp.giaNhap=newGiaNhap;countGia++;}
+    if(newGiaBan!=null){sp.giaBan=newGiaBan;countGia++;}
+  });
+  if(window._autoSave) window._autoSave();
+  if(gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),300);
+  closeMo('mo-update-ton');
+  renderDMSanPham();
+  renderDashboard();
+  const msg=[];
+  if(countTon) msg.push(`tồn kho ${countTon} SP`);
+  if(countGia) msg.push(`giá ${_tonParsed.length} SP`);
+  toast(`✅ Đã cập nhật ${msg.join(' + ')}!`);
+}
+
+// Reset tất cả tồn về 0
+function tonResetAll(){
+  confirm2('⚠️ Reset Tất Cả Tồn Kho',
+    `Bạn chắc chắn muốn đặt tồn kho của TẤT CẢ ${DB.sanPham.filter(s=>!s._deleted).length} sản phẩm về 0?`,
+    ()=>{
+      const now=Date.now();
+      DB.sanPham.forEach(sp=>{if(!sp._deleted){sp.ton=0;sp.updatedAt=now;}});
+      if(window._autoSave) window._autoSave();
+      closeMo('mo-update-ton');
+      renderDMSanPham();
+      renderDashboard();
+      toast('⚠️ Đã reset tất cả tồn kho về 0. Hãy cập nhật tồn thực tế!','error');
+    }
+  );
 }
 
 // ============ INIT ============
@@ -4322,7 +4550,7 @@ function trashClearSelection(){
   <div class="toolbar" style="flex-wrap:wrap;gap:8px">
     <div style="font-size:14px;font-weight:700;color:var(--t1)">🗑️ Thùng Rác</div>
     <div style="font-size:12.5px;color:var(--t3);margin-left:4px">Items bị xóa sẽ tự động xóa vĩnh viễn sau 30 ngày</div>
-    <div style="font-size:12px;color:#6b7280;font-style:italic;margin-left:auto">⚠️ Chỉ được phép khôi phục – xóa vĩnh viễn thực hiện trên máy chủ chính</div>
+    <div style="font-size:12px;color:#6b7280;font-style:italic;margin-left:auto">⚠️ Chỉ được phép khôi phục</div>
   </div>
 
   <!-- Filter tabs -->
@@ -4368,5 +4596,106 @@ function trashClearSelection(){
     <button class="btn btn-outline btn-sm" onclick="trashClearSelection()">✕ Bỏ Chọn</button>
   </div>
 </div>
+<!-- ===== MODAL CẬP NHẬT TỒN KHO HÀNG LOẠT ===== -->
+<div class="mo" id="mo-update-ton">
+  <div class="mo-box mo-xl">
+    <div class="mo-head">
+      <h2>📊 Cập Nhật Hàng Loạt — Tồn Kho &amp; Giá</h2>
+      <button class="mo-close" onclick="closeMo('mo-update-ton')">×</button>
+    </div>
+    <div class="mo-body" style="padding-bottom:0">
+
+      <!-- Hướng dẫn -->
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;line-height:2">
+        <strong style="color:var(--blue)">📋 Hướng dẫn:</strong><br>
+        1. Mở file Excel → chọn cột <strong>Mã SKU</strong> và các cột cần update (<strong>Tồn / Giá Nhập / Giá Bán</strong>)<br>
+        2. <strong>Copy (Ctrl+C) → Dán vào ô bên dưới (Ctrl+V)</strong> — không cần header<br>
+        3. Chỉnh đúng số cột bên dưới → xem Preview → Áp Dụng<br>
+        <span style="color:#0369a1">💡 Hỗ trợ Tab (Excel) và dấu phẩy (CSV). Ví dụ: <code>VT00027 [Tab] 150 [Tab] 45000 [Tab] 79000</code></span>
+      </div>
+
+      <!-- Mode chọn -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn btn-sm" id="ton-mode-btn-ton" onclick="tonSetMode('ton')"
+          style="background:var(--orange);color:#fff;font-weight:700">📦 Chỉ cập nhật Tồn Kho</button>
+        <button class="btn btn-outline btn-sm" id="ton-mode-btn-gia" onclick="tonSetMode('gia')">💰 Chỉ cập nhật Giá</button>
+        <button class="btn btn-outline btn-sm" id="ton-mode-btn-all" onclick="tonSetMode('all')">🔄 Cả Tồn + Giá</button>
+        <div style="margin-left:auto">
+          <button class="btn btn-red btn-sm" onclick="tonResetAll()">⚠️ Reset Tất Cả Tồn về 0</button>
+        </div>
+      </div>
+
+      <!-- Paste area -->
+      <div style="margin-bottom:10px">
+        <label style="font-size:12.5px;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">Dán dữ liệu từ Excel:</label>
+        <textarea id="ton-paste-area" rows="7"
+          placeholder="Dán dữ liệu ở đây... Ví dụ (Tab-separated):&#10;VT00027&#9;150&#10;VT00024&#9;38&#9;42000&#9;79400&#10;VT00165&#9;200"
+          style="width:100%;padding:10px 12px;border:2px dashed var(--border);border-radius:8px;font-family:monospace;font-size:12.5px;resize:vertical;outline:none;line-height:1.7;background:#fafafa"
+          oninput="tonParsePreview()"
+          onfocus="this.style.borderColor='var(--blue)'"
+          onblur="this.style.borderColor='var(--border)'"></textarea>
+      </div>
+
+      <!-- Cài đặt cột -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;background:#f8fafc;padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--t2)">Vị trí cột:</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+          <label>SKU:</label>
+          <select id="ton-col-sku" onchange="tonParsePreview()" style="padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit">
+            <option value="0">Cột 1</option><option value="1">Cột 2</option><option value="2">Cột 3</option>
+          </select>
+        </div>
+        <div id="ton-cfg-ton" style="display:flex;align-items:center;gap:6px;font-size:12px">
+          <label>Tồn kho:</label>
+          <select id="ton-col-ton" onchange="tonParsePreview()" style="padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit">
+            <option value="1">Cột 2</option><option value="0">Cột 1</option><option value="2">Cột 3</option><option value="3">Cột 4</option>
+          </select>
+        </div>
+        <div id="ton-cfg-gia" style="display:none;align-items:center;gap:10px;font-size:12px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <label>Giá nhập:</label>
+            <select id="ton-col-gianhap" onchange="tonParsePreview()" style="padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit">
+              <option value="-1">— Bỏ qua —</option><option value="2">Cột 3</option><option value="1">Cột 2</option><option value="3">Cột 4</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <label>Giá bán:</label>
+            <select id="ton-col-giabanle" onchange="tonParsePreview()" style="padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit">
+              <option value="-1">— Bỏ qua —</option><option value="3">Cột 4</option><option value="2">Cột 3</option><option value="4">Cột 5</option>
+            </select>
+          </div>
+        </div>
+        <div id="ton-parse-summary" style="font-size:12px;color:var(--t3);margin-left:auto"></div>
+      </div>
+
+      <!-- Preview table -->
+      <div id="ton-preview-wrap" style="display:none;margin-bottom:0">
+        <div style="font-size:12.5px;font-weight:600;color:var(--t2);margin-bottom:6px">
+          Preview <span id="ton-preview-title"></span>:
+        </div>
+        <div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
+          <table class="data-tbl" style="margin:0">
+            <thead id="ton-preview-thead"></thead>
+            <tbody id="ton-preview-tbody"></tbody>
+          </table>
+        </div>
+        <div id="ton-not-found-wrap" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;font-size:12px;color:#dc2626">
+          <strong>⚠️ Không tìm thấy SKU:</strong> <span id="ton-not-found-list"></span>
+        </div>
+      </div>
+
+    </div>
+    <div class="mo-foot" style="justify-content:space-between">
+      <div style="font-size:12px;color:var(--t3)" id="ton-apply-summary"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="closeMo('mo-update-ton')">Hủy</button>
+        <button class="btn btn-orange" id="ton-apply-btn" onclick="tonApplyUpdate()" disabled>
+          ✅ Áp Dụng Cập Nhật
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
