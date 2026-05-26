@@ -348,7 +348,7 @@
   <!-- CARDS CHÍNH -->
   <div class="cards" id="main-cards">
 
-    <a class="card card-blue" href="may-chu.html">
+    <a class="card card-blue" href="#" onclick="enterSystem('may-chu',event)">
       <div class="card-arrow">↗</div>
       <div class="card-icon">🖥️</div>
       <div class="card-label">Máy Chủ · Server</div>
@@ -363,7 +363,7 @@
       </div>
     </a>
 
-    <a class="card card-green" href="may-tram.html">
+    <a class="card card-green" href="#" onclick="enterSystem('may-tram',event)">
       <div class="card-arrow">↗</div>
       <div class="card-icon">💻</div>
       <div class="card-label">Máy Trạm · Client</div>
@@ -378,7 +378,7 @@
       </div>
     </a>
 
-    <a class="card card-orange" href="quan-ly.html">
+    <a class="card card-orange" href="#" onclick="enterSystem('quan-ly',event)">
       <div class="card-arrow">↗</div>
       <div class="card-icon">👔</div>
       <div class="card-label">Quản Lý · Manager</div>
@@ -490,12 +490,186 @@ function updateClock(){
 updateClock();
 setInterval(updateClock, 1000);
 
-// Staggered card entrance
+
+// ============================================================
+// CẤU HÌNH MẬT KHẨU — THAY ĐỔI Ở ĐÂY
+// ============================================================
+const PASSWORDS = {
+  'may-chu':  { pass: 'phuanh@maychu',  label: 'Máy Chủ · Kế Toán Chính', icon: '🖥️',  accent: '#58a6ff', file: 'may-chu.html'  },
+  'may-tram': { pass: 'phuanh@maytram', label: 'Máy Trạm · Bán Hàng',     icon: '💻',  accent: '#3fb950', file: 'may-tram.html' },
+  'quan-ly':  { pass: 'phuanh@quanly',  label: 'Quản Lý · Báo Cáo',       icon: '👔',  accent: '#f0883e', file: 'quan-ly.html'  },
+};
+const MAX_TRIES     = 5;    // Sai tối đa 5 lần thì khóa
+const LOCK_SECONDS  = 60;   // Khóa 60 giây
+const SESSION_HOURS = 8;    // Tick "Nhớ mật khẩu" = nhớ 8 giờ
+// ============================================================
+
+let _pwTarget = null;
+let _pwTries = {};
+let _pwLockUntil = {};
+let _pwLockTimer = null;
+
+// ============================================================
+// AUTH ENGINE
+// ============================================================
+
+function enterSystem(system, e){
+  if(e) e.preventDefault();
+  const cfg = PASSWORDS[system];
+  if(!cfg) return;
+
+  // Check session token
+  const token = localStorage.getItem('pa_session_'+system);
+  if(token){
+    const {pass, expires} = JSON.parse(token);
+    if(pass === cfg.pass && Date.now() < expires){
+      goTo(cfg.file);
+      return;
+    }
+    localStorage.removeItem('pa_session_'+system);
+  }
+
+  // Check lock
+  if(_pwLockUntil[system] && Date.now() < _pwLockUntil[system]){
+    openPwModal(system, true);
+    return;
+  }
+
+  openPwModal(system, false);
+}
+
+function openPwModal(system, locked){
+  _pwTarget = system;
+  const cfg = PASSWORDS[system];
+  const overlay = document.getElementById('pw-overlay');
+  const box = document.getElementById('pw-box');
+
+  document.getElementById('pw-icon').textContent = cfg.icon;
+  document.getElementById('pw-title').textContent = cfg.label;
+  document.getElementById('pw-subtitle').textContent = locked ? 'Tài khoản tạm khóa' : 'Nhập mật khẩu để tiếp tục';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('pw-error').style.display = 'none';
+  document.getElementById('pw-submit').style.background = cfg.accent;
+  document.getElementById('pw-box').style.setProperty('--accent', cfg.accent);
+  document.getElementById('pw-input').style.setProperty('--accent', cfg.accent);
+
+  if(locked){
+    document.getElementById('pw-locked').style.display = 'block';
+    document.getElementById('pw-submit').disabled = true;
+    document.getElementById('pw-submit').style.opacity = '0.5';
+    startLockCountdown(system);
+  } else {
+    document.getElementById('pw-locked').style.display = 'none';
+    document.getElementById('pw-submit').disabled = false;
+    document.getElementById('pw-submit').style.opacity = '1';
+  }
+
+  overlay.style.display = 'flex';
+  setTimeout(()=>document.getElementById('pw-input').focus(), 100);
+}
+
+function pwClose(){
+  document.getElementById('pw-overlay').style.display = 'none';
+  _pwTarget = null;
+  if(_pwLockTimer) clearInterval(_pwLockTimer);
+}
+
+function pwSubmit(){
+  const system = _pwTarget;
+  if(!system) return;
+  const cfg = PASSWORDS[system];
+  const input = document.getElementById('pw-input').value;
+  const btn = document.getElementById('pw-submit');
+
+  // Check lock
+  if(_pwLockUntil[system] && Date.now() < _pwLockUntil[system]) return;
+
+  if(input === cfg.pass){
+    // SUCCESS
+    btn.textContent = '✅ Đúng rồi!';
+    btn.style.background = '#3fb950';
+    document.getElementById('pw-error').style.display = 'none';
+    _pwTries[system] = 0;
+
+    // Save session if remember checked
+    if(document.getElementById('pw-remember').checked){
+      localStorage.setItem('pa_session_'+system, JSON.stringify({
+        pass: cfg.pass,
+        expires: Date.now() + SESSION_HOURS * 3600 * 1000
+      }));
+    }
+
+    setTimeout(()=>{ pwClose(); goTo(cfg.file); }, 400);
+  } else {
+    // WRONG PASSWORD
+    _pwTries[system] = (_pwTries[system]||0) + 1;
+    const left = MAX_TRIES - _pwTries[system];
+
+    const box = document.getElementById('pw-box');
+    box.classList.remove('pw-shake');
+    void box.offsetWidth;
+    box.classList.add('pw-shake');
+
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').style.borderColor = '#f85149';
+    setTimeout(()=>document.getElementById('pw-input').style.borderColor='rgba(255,255,255,0.1)', 600);
+
+    if(left <= 0){
+      // LOCK
+      _pwTries[system] = 0;
+      _pwLockUntil[system] = Date.now() + LOCK_SECONDS * 1000;
+      document.getElementById('pw-error').style.display = 'none';
+      document.getElementById('pw-locked').style.display = 'block';
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      startLockCountdown(system);
+    } else {
+      document.getElementById('pw-error').style.display = 'block';
+      document.getElementById('pw-tries').textContent = left;
+    }
+  }
+}
+
+function startLockCountdown(system){
+  if(_pwLockTimer) clearInterval(_pwLockTimer);
+  _pwLockTimer = setInterval(()=>{
+    const left = Math.ceil((_pwLockUntil[system] - Date.now())/1000);
+    const el = document.getElementById('pw-locktime');
+    const btn = document.getElementById('pw-submit');
+    if(left <= 0){
+      clearInterval(_pwLockTimer);
+      document.getElementById('pw-locked').style.display = 'none';
+      if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+    } else {
+      if(el) el.textContent = left;
+    }
+  }, 1000);
+}
+
+function pwToggleEye(){
+  const inp = document.getElementById('pw-input');
+  const eye = document.getElementById('pw-eye');
+  if(inp.type === 'password'){
+    inp.type = 'text';
+    eye.textContent = '🙈';
+  } else {
+    inp.type = 'password';
+    eye.textContent = '👁';
+  }
+}
+
+function goTo(file){
+  // Ripple on card then navigate
+  window.location.href = file;
+}
+
+// ============================================================
+// STAGGERED ENTRANCE + RIPPLE
+// ============================================================
 document.querySelectorAll('.card').forEach((card, i) => {
   setTimeout(() => card.classList.add('visible'), 100 + i * 120);
 });
 
-// Ripple effect
 document.querySelectorAll('.card').forEach(card => {
   card.addEventListener('click', function(e) {
     const rect = card.getBoundingClientRect();
@@ -504,9 +678,74 @@ document.querySelectorAll('.card').forEach(card => {
     const size = Math.max(rect.width, rect.height) * 1.5;
     r.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
     card.appendChild(r);
-    setTimeout(() => r.remove(), 500);
+    setTimeout(() => r.remove(), 600);
   });
 });
 </script>
+
+<!-- PASSWORD MODAL -->
+<div id="pw-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center">
+  <div id="pw-box" style="background:#161b22;border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:36px 32px;width:100%;max-width:380px;margin:16px;box-shadow:0 24px 80px rgba(0,0,0,0.6);animation:slideUp 0.25s ease">
+    
+    <!-- Icon + Title -->
+    <div style="text-align:center;margin-bottom:24px">
+      <div id="pw-icon" style="font-size:40px;margin-bottom:12px">🔐</div>
+      <div id="pw-title" style="font-size:18px;font-weight:800;color:#e6edf3;margin-bottom:4px">Xác Thực</div>
+      <div id="pw-subtitle" style="font-size:13px;color:#8b949e">Nhập mật khẩu để tiếp tục</div>
+    </div>
+
+    <!-- Input -->
+    <div style="position:relative;margin-bottom:16px">
+      <input type="password" id="pw-input"
+        placeholder="Nhập mật khẩu..."
+        style="width:100%;padding:14px 48px 14px 16px;background:#0d1117;border:2px solid rgba(255,255,255,0.1);border-radius:10px;color:#e6edf3;font-size:15px;font-family:inherit;outline:none;letter-spacing:2px;transition:border-color 0.2s"
+        onfocus="this.style.borderColor='var(--accent)'"
+        onblur="this.style.borderColor='rgba(255,255,255,0.1)'"
+        onkeydown="if(event.key==='Enter')pwSubmit();if(event.key==='Escape')pwClose()">
+      <span id="pw-eye" onclick="pwToggleEye()" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:18px;color:#484f58;user-select:none">👁</span>
+    </div>
+
+    <!-- Error msg -->
+    <div id="pw-error" style="display:none;background:rgba(248,81,73,0.12);border:1px solid rgba(248,81,73,0.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#f85149;margin-bottom:14px;text-align:center">
+      ❌ Mật khẩu không đúng! Còn <span id="pw-tries"></span> lần thử.
+    </div>
+
+    <!-- Locked msg -->
+    <div id="pw-locked" style="display:none;background:rgba(248,81,73,0.12);border:1px solid rgba(248,81,73,0.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#f85149;margin-bottom:14px;text-align:center">
+      🔒 Đã sai quá 5 lần. Khóa <span id="pw-locktime"></span> giây.
+    </div>
+
+    <!-- Buttons -->
+    <div style="display:flex;gap:10px">
+      <button onclick="pwClose()" style="flex:1;padding:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#8b949e;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'">Hủy</button>
+      <button id="pw-submit" onclick="pwSubmit()" style="flex:2;padding:12px;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+        Đăng Nhập →
+      </button>
+    </div>
+
+    <!-- Remember session -->
+    <div style="text-align:center;margin-top:16px">
+      <label style="display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:#8b949e;cursor:pointer">
+        <input type="checkbox" id="pw-remember" style="accent-color:#58a6ff">
+        Nhớ mật khẩu trên máy này (8 giờ)
+      </label>
+    </div>
+
+  </div>
+</div>
+
+<style>
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(20px) scale(0.97); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes shake {
+  0%,100% { transform:translateX(0); }
+  20%,60% { transform:translateX(-8px); }
+  40%,80% { transform:translateX(8px); }
+}
+.pw-shake { animation: shake 0.4s ease; }
+</style>
+
 </body>
 </html>
