@@ -313,36 +313,53 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--t1
 
 <!-- ========== DANH MỤC ========== -->
 <div class="page" id="page-danh-muc">
+  <!-- TOOLBAR -->
+  <div class="toolbar" style="flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <button class="btn btn-primary btn-sm" onclick="openModalDMTram('sp')">+ Thêm Sản Phẩm</button>
+    <button class="btn btn-green btn-sm" onclick="openModalDMTram('kh')">+ Thêm Khách Hàng</button>
+    <div style="margin-left:auto;font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px">
+      <span style="background:#fef3c7;border:1px solid #fbbf24;border-radius:6px;padding:2px 8px;font-size:11.5px;color:#92400e">⚠️ Chỉ máy chủ mới được XÓA</span>
+    </div>
+  </div>
+
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-    <!-- SẢN PHẨM (ẩn giá nhập) -->
+    <!-- SẢN PHẨM -->
     <div class="dm-card">
-      <div class="dm-head">
-        <div class="dm-title">🛍️ Sản Phẩm &amp; Bảng Giá</div>
-      </div>
+      <div class="dm-head"><div class="dm-title">🛍️ Sản Phẩm &amp; Bảng Giá</div></div>
       <input class="dm-search" placeholder="Tìm sản phẩm / SKU…" oninput="renderDMSanPham(this.value)">
       <div style="overflow-x:auto">
         <table class="dm-tbl">
-          <thead><tr><th>SKU</th><th>Tên Sản Phẩm</th><th>Tồn</th><th>ĐVT</th><th class="tr">Giá Bán Lẻ</th></tr></thead>
+          <thead><tr><th>SKU</th><th>Tên Sản Phẩm</th><th>Tồn</th><th>ĐVT</th><th class="tr">Giá Bán Lẻ</th><th style="width:40px"></th></tr></thead>
           <tbody id="dm-sp-tbody"></tbody>
         </table>
       </div>
     </div>
     <!-- KHÁCH HÀNG -->
     <div class="dm-card">
-      <div class="dm-head">
-        <div class="dm-title">👥 Khách Hàng</div>
-      </div>
+      <div class="dm-head"><div class="dm-title">👥 Khách Hàng</div></div>
       <input class="dm-search" placeholder="Tìm khách hàng…" oninput="renderDMKH(this.value)">
       <div style="overflow-x:auto">
         <table class="dm-tbl">
-          <thead><tr><th>Mã KH</th><th>Tên Khách Hàng</th><th>SĐT</th><th class="tr">Nợ</th></tr></thead>
+          <thead><tr><th>Mã KH</th><th>Tên Khách Hàng</th><th>SĐT</th><th class="tr">Nợ</th><th style="width:40px"></th></tr></thead>
           <tbody id="dm-kh-tbody"></tbody>
         </table>
       </div>
     </div>
   </div>
-  <div style="margin-top:14px;padding:12px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;font-size:12.5px;color:#92400e">
-    <strong>⚠️ Lưu ý:</strong> Danh mục chỉ đọc từ máy chủ. Để thêm/sửa sản phẩm hoặc khách hàng, vui lòng thao tác trên <strong>máy chủ</strong> rồi nhấn <strong>🔄 Đồng bộ ngay</strong>.
+  <div style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;font-size:12.5px;color:#166534">
+    <strong>ℹ️ Phân quyền Máy Trạm:</strong> Được <strong>thêm mới</strong> và <strong>sửa</strong> Sản Phẩm &amp; Khách Hàng. Để <strong>xóa</strong>, vui lòng thao tác trên <strong>máy chủ</strong>.
+  </div>
+</div>
+
+<!-- Modal Thêm/Sửa Danh Mục (Máy Trạm) -->
+<div class="mo" id="mo-dm-tram">
+  <div class="mo-box">
+    <div class="mo-head"><h2 id="mo-dmt-title">Thêm Sản Phẩm</h2><button class="mo-close" onclick="closeMo('mo-dm-tram')">×</button></div>
+    <div class="mo-body" id="mo-dmt-body"></div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-dm-tram')">Hủy</button>
+      <button class="btn btn-primary" onclick="saveDMTram()">💾 Lưu</button>
+    </div>
   </div>
 </div>
 
@@ -518,8 +535,11 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--t1
         <div class="fg"><label>Hình Thức TT</label><select id="pxk-httt"><option>Tiền Mặt</option><option>Chuyển Khoản</option><option selected>Công Nợ</option></select></div>
       </div>
       <div class="form-grid fg2">
-        <div class="fg"><label>Ghi Chú</label><textarea id="pxk-ghichu" placeholder="Ghi chú nội bộ…"></textarea></div>
+        <div class="fg"><label>Điện Thoại KH</label><input type="text" id="pxk-sdt" placeholder="Tự điền theo KH, có thể sửa…"></div>
         <div class="fg"><label>Thuế Suất VAT</label><select id="pxk-vat" onchange="calcPXK()"><option value="0">0%</option><option value="5">5%</option><option value="8" selected>8%</option><option value="10">10%</option></select></div>
+      </div>
+      <div class="form-grid fg1">
+        <div class="fg"><label>Ghi Chú</label><textarea id="pxk-ghichu" placeholder="Ghi chú nội bộ…"></textarea></div>
       </div>
       <div class="sec-title">☰ Chi Tiết Hàng Hóa</div>
       <div class="it-wrap">
@@ -770,6 +790,8 @@ function acSelect(ctx,khId){
   const prefix=ctx.replace('-kh','');
   const addr=document.getElementById(prefix+'-diachi');
   if(addr&&kh.diachi) addr.value=kh.diachi;
+  const sdt=document.getElementById(prefix+'-sdt');
+  if(sdt&&kh.sdt) sdt.value=kh.sdt;
 }
 function acSetKH(ctx,khId){
   const kh=getKH(khId);if(!kh.id) return;
@@ -981,6 +1003,7 @@ function openModalPXK(pxkId=null){
   document.getElementById('pxk-items').innerHTML='';
   document.getElementById('pxk-ghichu').value='';
   document.getElementById('pxk-diachi').value='';
+  document.getElementById('pxk-sdt').value='';
   document.getElementById('pxk-kh-input').value='';
   document.getElementById('pxk-kh').value='';
   if(pxkId){
@@ -992,6 +1015,7 @@ function openModalPXK(pxkId=null){
     document.getElementById('pxk-httt').value=p.httt;
     document.getElementById('pxk-vat').value=p.vat;
     document.getElementById('pxk-diachi').value=p.diachi||'';
+    document.getElementById('pxk-sdt').value=p.sdt||(getKH(p.khId).sdt||'');
     document.getElementById('pxk-ghichu').value=p.ghichu||'';
     p.items.forEach(it=>addItemRow('pxk',it));
   } else {
@@ -1010,11 +1034,11 @@ function savePXK(){
   const ctx=DB._editCtx;
   if(ctx&&ctx.id){
     const p=DB.pxk.find(x=>x.id===ctx.id);
-    Object.assign(p,stamp({khId,ngay,kdId:document.getElementById('pxk-kd').value,httt:document.getElementById('pxk-httt').value,vat:vatPct,diachi:document.getElementById('pxk-diachi').value,ghichu:document.getElementById('pxk-ghichu').value,items,soSach:'Ghi Số'}));
+    Object.assign(p,stamp({khId,ngay,kdId:document.getElementById('pxk-kd').value,httt:document.getElementById('pxk-httt').value,vat:vatPct,diachi:document.getElementById('pxk-diachi').value,sdt:document.getElementById('pxk-sdt').value,ghichu:document.getElementById('pxk-ghichu').value,items,soSach:'Ghi Số'}));
     toast('Đã cập nhật PXK!');
   } else {
     const ma=genId('PXK');
-    DB.pxk.unshift(stamp({id:ma,ma,ngay,khId,kdId:document.getElementById('pxk-kd').value,httt:document.getElementById('pxk-httt').value,vat:vatPct,diachi:document.getElementById('pxk-diachi').value,ghichu:document.getElementById('pxk-ghichu').value,items,soSach:'Ghi Số',hoadonVAT:'Chưa Xuất'}));
+    DB.pxk.unshift(stamp({id:ma,ma,ngay,khId,kdId:document.getElementById('pxk-kd').value,httt:document.getElementById('pxk-httt').value,vat:vatPct,diachi:document.getElementById('pxk-diachi').value,sdt:document.getElementById('pxk-sdt').value,ghichu:document.getElementById('pxk-ghichu').value,items,soSach:'Ghi Số',hoadonVAT:'Chưa Xuất'}));
     toast('Đã lập & ghi sổ PXK: '+ma);
   }
   closeMo('mo-pxk');renderPXKTable();
@@ -1150,7 +1174,7 @@ function inPXK(id){
     +'<div class="pbuyer" style="margin-top:8px"><b>Người mua:</b></div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">Tên khách hàng:</span>'+kh.ten+'</div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">Địa chỉ:</span>'+(p.diachi||kh.diachi||'—')+'</div>'
-    +'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+(kh.sdt||'—')+'</div>'
+    +'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+(p.sdt||kh.sdt||'—')+'</div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">Hình thức TT:</span>'+p.httt+'</div>'
     +(p.ghichu?'<div class="pbuyer"><span class="pbuyer-lbl">Ghi chú:</span>'+p.ghichu+'</div>':'')
     +'<table class="ptbl"><thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th>'
@@ -1566,17 +1590,111 @@ function exportExcelHoaDonSelected(){
 // ============ DANH MỤC (Chỉ đọc) ============
 function renderDMSanPham(q=''){
   const tbody=document.getElementById('dm-sp-tbody');if(!tbody)return;
-  const all=DB.sanPham.filter(s=>!q||s.sku.toLowerCase().includes(q.toLowerCase())||s.ten.toLowerCase().includes(q.toLowerCase()));
+  const all=DB.sanPham.filter(s=>!s._deleted&&(!q||s.sku.toLowerCase().includes(q.toLowerCase())||s.ten.toLowerCase().includes(q.toLowerCase())));
   const list=all.slice(0,50);const hidden=all.length-list.length;
-  tbody.innerHTML=list.map(s=>`<tr><td class="dm-sku">${s.sku}</td><td>${s.ten}</td><td>${s.ton}</td><td>${s.don}</td><td class="tr" style="color:var(--red);font-weight:700">${fmt(s.giaBan)} ₫</td></tr>`).join('')
-    +(hidden>0?`<tr><td colspan="5" style="text-align:center;padding:7px;font-size:11.5px;color:var(--t3);background:#f8fafc">… còn ${hidden} sản phẩm – gõ tìm để lọc</td></tr>`:'');
+  tbody.innerHTML=list.map(s=>`<tr>
+    <td class="dm-sku">${s.sku}</td>
+    <td>${s.ten}</td>
+    <td>${s.ton}</td>
+    <td>${s.don}</td>
+    <td class="tr" style="color:var(--red);font-weight:700">${fmt(s.giaBan)} ₫</td>
+    <td><button class="ico-btn" onclick="openModalDMTram('sp','${s.id}')" title="Sửa" style="font-size:13px">✏️</button></td>
+  </tr>`).join('')
+    +(hidden>0?`<tr><td colspan="6" style="text-align:center;padding:7px;font-size:11.5px;color:var(--t3);background:#f8fafc">… còn ${hidden} sản phẩm – gõ tìm để lọc</td></tr>`:'');
 }
+
 function renderDMKH(q=''){
   const tbody=document.getElementById('dm-kh-tbody');if(!tbody)return;
-  const all=DB.khachHang.filter(k=>!q||k.ten.toLowerCase().includes(q.toLowerCase())||k.ma.toLowerCase().includes(q.toLowerCase()));
+  const all=DB.khachHang.filter(k=>!k._deleted&&(!q||k.ten.toLowerCase().includes(q.toLowerCase())||k.ma.toLowerCase().includes(q.toLowerCase())));
   const list=all.slice(0,50);const hidden=all.length-list.length;
-  tbody.innerHTML=list.map(k=>{const no=getKHDuNo(k.id);return `<tr><td class="dm-sku">${k.ma}</td><td>${k.ten}</td><td style="font-size:11px">${k.sdt}</td><td class="tr ${no>0?'m-red':''}">${fmt(no)} ₫</td></tr>`;}).join('')
-    +(hidden>0?`<tr><td colspan="4" style="text-align:center;padding:7px;font-size:11.5px;color:var(--t3);background:#f8fafc">… còn ${hidden} KH – gõ tìm để lọc</td></tr>`:'');
+  tbody.innerHTML=list.map(k=>{const no=getKHDuNo(k.id);return `<tr>
+    <td class="dm-sku">${k.ma}</td>
+    <td>${k.ten}</td>
+    <td style="font-size:11px">${k.sdt}</td>
+    <td class="tr ${no>0?'m-red':''}">${fmt(no)} ₫</td>
+    <td><button class="ico-btn" onclick="openModalDMTram('kh','${k.id}')" title="Sửa" style="font-size:13px">✏️</button></td>
+  </tr>`;}).join('')
+    +(hidden>0?`<tr><td colspan="5" style="text-align:center;padding:7px;font-size:11.5px;color:var(--t3);background:#f8fafc">… còn ${hidden} KH – gõ tìm để lọc</td></tr>`:'');
+}
+
+// ============ DM TRAM MODAL ============
+let _dmTramType='', _dmTramEditId=null;
+
+function openModalDMTram(type, id=null){
+  _dmTramType=type; _dmTramEditId=id;
+  const body=document.getElementById('mo-dmt-body');
+  const title=document.getElementById('mo-dmt-title');
+
+  if(type==='sp'){
+    const sp=id?DB.sanPham.find(x=>x.id===id):null;
+    title.textContent=id?'Sửa Sản Phẩm':'Thêm Sản Phẩm';
+    body.innerHTML=`<div class="form-grid fg2">
+      <div class="fg"><label>Mã SKU ${!id?'<span class="req">*</span>':''}</label>
+        <input type="text" id="dmt-sku" value="${sp?sp.sku:''}" ${id?'readonly style="background:#f1f5f9;color:#64748b"':''} placeholder="VD: VT00027">
+      </div>
+      <div class="fg"><label>ĐVT</label><input type="text" id="dmt-don" value="${sp?sp.don:'Cái'}" placeholder="Cái, Ram, Hộp…"></div>
+    </div>
+    <div class="fg"><label>Tên Sản Phẩm <span class="req">*</span></label>
+      <input type="text" id="dmt-ten" value="${sp?sp.ten:''}" placeholder="Tên sản phẩm…">
+    </div>
+    <div class="form-grid fg2">
+      <div class="fg"><label>Tồn Kho</label><input type="number" id="dmt-ton" value="${sp?sp.ton:0}"></div>
+      <div class="fg"><label>Giá Bán Lẻ</label><input type="number" id="dmt-giaban" value="${sp?sp.giaBan:0}"></div>
+    </div>`;
+  } else if(type==='kh'){
+    const kh=id?DB.khachHang.find(x=>x.id===id):null;
+    title.textContent=id?'Sửa Khách Hàng':'Thêm Khách Hàng';
+    body.innerHTML=`<div class="form-grid fg2">
+      <div class="fg"><label>Mã KH ${!id?'<span class="req">*</span>':''}</label>
+        <input type="text" id="dmt-ma" value="${kh?kh.ma:''}" ${id?'readonly style="background:#f1f5f9;color:#64748b"':''} placeholder="VD: KH001">
+      </div>
+      <div class="fg"><label>Số Điện Thoại</label><input type="text" id="dmt-sdt" value="${kh?kh.sdt:''}" placeholder="0912345678"></div>
+    </div>
+    <div class="fg"><label>Tên Khách Hàng <span class="req">*</span></label>
+      <input type="text" id="dmt-ten" value="${kh?kh.ten:''}" placeholder="Tên công ty hoặc cá nhân…">
+    </div>
+    <div class="fg"><label>Địa Chỉ</label>
+      <input type="text" id="dmt-diachi" value="${kh?kh.diachi||'':''}" placeholder="Địa chỉ…">
+    </div>
+    <div class="fg"><label>MST</label><input type="text" id="dmt-mst" value="${kh?kh.mst||'':''}" placeholder="Mã số thuế…"></div>`;
+  }
+  openMo('mo-dm-tram');
+}
+
+function saveDMTram(){
+  const now=Date.now();
+  if(_dmTramType==='sp'){
+    const sku=(document.getElementById('dmt-sku')?.value||'').trim();
+    const ten=(document.getElementById('dmt-ten')?.value||'').trim();
+    if(!ten){toast('Vui lòng nhập tên sản phẩm!','error');return;}
+    if(_dmTramEditId){
+      const sp=DB.sanPham.find(x=>x.id===_dmTramEditId);
+      if(sp) Object.assign(sp,{ten,don:document.getElementById('dmt-don').value||'Cái',ton:Number(document.getElementById('dmt-ton').value)||0,giaBan:Number(document.getElementById('dmt-giaban').value)||0,updatedAt:now});
+    } else {
+      if(!sku){toast('Vui lòng nhập mã SKU!','error');return;}
+      if(DB.sanPham.find(s=>s.id===sku||s.sku===sku)){toast('Mã SKU đã tồn tại!','error');return;}
+      DB.sanPham.unshift({id:sku,sku,ten,don:document.getElementById('dmt-don').value||'Cái',ton:Number(document.getElementById('dmt-ton').value)||0,giaBan:Number(document.getElementById('dmt-giaban').value)||0,updatedAt:now});
+    }
+    toast((_dmTramEditId?'Cập nhật':'Thêm')+' sản phẩm thành công!');
+    renderDMSanPham();
+  } else if(_dmTramType==='kh'){
+    const ma=(document.getElementById('dmt-ma')?.value||'').trim();
+    const ten=(document.getElementById('dmt-ten')?.value||'').trim();
+    if(!ten){toast('Vui lòng nhập tên khách hàng!','error');return;}
+    if(_dmTramEditId){
+      const kh=DB.khachHang.find(x=>x.id===_dmTramEditId);
+      if(kh) Object.assign(kh,{ten,sdt:document.getElementById('dmt-sdt').value||'',diachi:document.getElementById('dmt-diachi').value||'',mst:document.getElementById('dmt-mst').value||'',updatedAt:now});
+    } else {
+      if(!ma){toast('Vui lòng nhập mã KH!','error');return;}
+      if(DB.khachHang.find(k=>k.id===ma||k.ma===ma)){toast('Mã KH đã tồn tại!','error');return;}
+      DB.khachHang.unshift({id:ma,ma,ten,sdt:document.getElementById('dmt-sdt').value||'',diachi:document.getElementById('dmt-diachi').value||'',mst:document.getElementById('dmt-mst').value||'',updatedAt:now});
+    }
+    toast((_dmTramEditId?'Cập nhật':'Thêm')+' khách hàng thành công!');
+    renderDMKH();
+  }
+  closeMo('mo-dm-tram');
+  if(window._autoSave) window._autoSave();
+  if(_tramBaseUrl) setTimeout(()=>_tramPushMerged(true),300);
 }
 
 // ============ EXPORT EXCEL ============
