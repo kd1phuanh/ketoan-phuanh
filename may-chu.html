@@ -1725,7 +1725,7 @@ function ghiSoPXK(id){
   p.soSach='Ghi Số';
   // update cong no
   const kh=DB.khachHang.find(x=>x.id===p.khId);
-  if(kh && p.httt.includes('Nợ')){
+  if(kh && p.httt!=='Tiền Mặt'){
     const {total}=calcPXKTotals(p.items,p.vat);
     kh.duNo=(kh.duNo||0)+total;
   }
@@ -1777,7 +1777,7 @@ function renderPXKTable(){
     const locked=isPXKLocked(p);
     const isGhiSo=p.soSach==='Ghi Số';
     const ssBdg=isGhiSo?'bdg-green':'bdg-orange';
-    const ttBdg=p.httt.includes('Nợ')?'bdg-red':'bdg-green';
+    const ttBdg=p.httt==='Tiền Mặt'?'bdg-green':'bdg-red';
     const lockIcon=locked?'🔒 ':' ';
     let actions='';
     if(locked){
@@ -1795,7 +1795,7 @@ function renderPXKTable(){
       <td class="tr money m-blue">${fmt(total)} ₫</td>
       <td><span class="bdg ${ssBdg}">${p.soSach}</span></td>
       <td><span class="bdg bdg-gray" style="font-size:10.5px">${p.hoadonVAT}</span></td>
-      <td><span class="bdg ${ttBdg}">${p.httt.includes('Nợ')?'Khắt Nợ':'Đã TT'}</span></td>
+      <td><span class="bdg ${ttBdg}">${p.httt==='Tiền Mặt'?'Đã TT':'Công Nợ'}</span></td>
       <td><div class="acts">${actions}</div></td>
     </tr>`;
   }).join('');
@@ -1909,7 +1909,7 @@ function chuyenSangPXK(bgId){
 // ============ CONG NO ============
 function getKHDuNo(khId){
   let no=0;
-  DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt.includes('Nợ')).forEach(p=>{
+  DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt!=='Tiền Mặt').forEach(p=>{
     const {total}=calcPXKTotals(p.items,p.vat);
     no+=total;
   });
@@ -1955,7 +1955,7 @@ function openCongNoDetail(khId){
   document.getElementById('cn-detail-total').innerHTML=`<span style="font-size:13px;color:var(--t2);font-weight:400">Dư nợ:</span> ${fmt(no)} ₫`;
   document.getElementById('cn-thu-ngay').value=todayStr();
 
-  const pxkList=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt.includes('Nợ'));
+  const pxkList=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt!=='Tiền Mặt');
   const tbody=document.getElementById('cn-detail-tbody');
   tbody.innerHTML=pxkList.map(p=>{
     const {total}=calcPXKTotals(p.items,p.vat);
@@ -2058,7 +2058,7 @@ function saveThuNo(){
   // Cập nhật trạng thái HTTT của các PXK nợ của KH này
   // Ưu tiên PXK cũ nhất trước, cập nhật cho đến khi hết tiền thu
   let remaining=st;
-  const pxkNo=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt.includes('Nợ')&&!isPXKLocked(p))
+  const pxkNo=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt!=='Tiền Mặt'&&!isPXKLocked(p))
     .sort((a,b)=>a.ngay.localeCompare(b.ngay));
   for(const p of pxkNo){
     if(remaining<=0) break;
@@ -2090,7 +2090,7 @@ function renderThuGopTable(){
   const khId=document.getElementById('tg-kh')?.value;
   const tbody=document.getElementById('tg-tbody');
   if(!tbody) return;
-  const list=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt.includes('Nợ'));
+  const list=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt!=='Tiền Mặt');
   if(!list.length){tbody.innerHTML=`<tr><td colspan="4" class="tc" style="padding:20px;color:var(--t3)">Không có đơn nợ cho khách hàng này</td></tr>`;
     document.getElementById('tg-total').textContent='0 ₫';return;}
   tbody.innerHTML=list.map(p=>{
@@ -2324,7 +2324,7 @@ function exportExcelHoaDonSelected(){
       <div class="hd-header">
         <div class="hd-co">Văn Phòng Phẩm Phú Anh</div>
         <div style="font-size:11px;color:#666">Hệ Thống Phân Phối Thiết Bị Trường Học & Văn Phòng Cao Cấp</div>
-        <div style="font-size:11px;color:#666">DV22-LK949 Khu đất dịch vụ Đào Đặt – Hàng Bè, Phường Kiến Hưng, Hà Nội | Hotline: 0978692470 – 0936029426 | MST: 0111029621</div>
+        <div style="font-size:11px;color:#666">DV22-LK949 Khu đất dịch vụ Đào Đặt – Hàng Bè, Phường Kiến Hưng, Hà Nội | Hotline: 0963042320 | MST: 0111029621</div>
       </div>
       <div class="hd-title">Hóa Đơn Bán Hàng</div>
       <div class="hd-no">Số: <strong style="color:#2563eb">${h.soHD}</strong> &nbsp;|&nbsp; Ngày: ${h.ngay} &nbsp;|&nbsp; ${signed?'<span style="color:green">✅ ĐÃ KÝ</span>':'<span style="color:orange">📝 NHÁP</span>'}</div>
@@ -2433,7 +2433,9 @@ function inHoaDon(hdId){
     +'<div class="pbuyer"><span class="pbuyer-lbl">Tên khách hàng:</span>'+kh.ten+'</div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">Địa chỉ:</span>'+(kh.diachi||'—')+'</div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">MST:</span>'+(kh.mst||'—')+'</div>'
-    +'<div class="pbuyer"><span class="pbuyer-lbl">Diễn giải:</span>Bán hàng '+kh.ten+'</div>'
+    +'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+(kh.sdt||'—')+'</div>'
+    +(h.httt?'<div class="pbuyer"><span class="pbuyer-lbl">Hình thức TT:</span>'+h.httt+'</div>':'')
+    +(h.ghichu?'<div class="pbuyer"><span class="pbuyer-lbl">Ghi chú:</span>'+h.ghichu+'</div>':'')
     +'<table class="ptbl"><thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th><th>CK%</th><th>Thành tiền</th></tr></thead>'
     +'<tbody>'+rows+'</tbody></table>'
     +'<table class="ptot-tbl">'
@@ -2959,7 +2961,7 @@ function renderAllDM(){
 const CO_SO_IN={
   ten:'CÔNG TY TNHH VĂN PHÒNG PHẨM PHÚ ANH',
   cs:'Cs1 : Kiến Hưng, Hà Đông - Cs2 : Khương Đình, Thanh Xuân',
-  tel:'Tel: 0978692470 - 0936029426',
+  tel:'Tel: 0963042320',
   mst:'MST: 0111029621',
 };
 
@@ -3070,7 +3072,9 @@ function xemPhieuPXK(id){
     +'<div class="pbuyer"><b>Người mua:</b></div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">Tên khách hàng:</span>'+kh.ten+'</div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">Địa chỉ:</span>'+(p.diachi||kh.diachi||'—')+'</div>'
-    +'<div class="pbuyer"><span class="pbuyer-lbl">Diễn giải:</span>Bán hàng '+kh.ten+'</div>'
+    +'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+(kh.sdt||'—')+'</div>'
+    +'<div class="pbuyer"><span class="pbuyer-lbl">Hình thức TT:</span>'+p.httt+'</div>'
+    +(p.ghichu?'<div class="pbuyer"><span class="pbuyer-lbl">Ghi chú:</span>'+p.ghichu+'</div>':'')
     +'<table class="ptbl"><thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th>'+ckTh+'<th>Thành tiền</th></tr></thead>'
     +'<tbody>'+rows+'</tbody></table>'
     +'<table class="ptot-tbl">'+totRows+'</table>'

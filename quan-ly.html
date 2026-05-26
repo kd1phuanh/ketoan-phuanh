@@ -280,7 +280,7 @@ select{font-family:inherit}
   </div>
   <div class="sb-bottom">
     <button class="sync-btn" onclick="toast('Đã đồng bộ lên đám mây!','success')">☁️ Đồng bộ Đám mây</button>
-    <div class="sb-ver">Phần mềm Kế toán v7.0 – QL<br>© Phú Anh Stationery 2026</div>
+    <div class="sb-ver">Phần mềm Kế toán v7.0<br>© Phú Anh Stationery 2026</div>
   </div>
 </aside>
 
@@ -629,7 +629,7 @@ select{font-family:inherit}
   </div>
 
   <!-- GOOGLE DRIVE BACKUP — Apps Script -->
-  <!-- Drive backup không có trên phiên bản này -->
+  <!-- Drive backup không có -->
 
   <!-- LOG -->
   <div class="sync-card">
@@ -1674,7 +1674,7 @@ function ghiSoPXK(id){
   p.soSach='Ghi Số';
   // update cong no
   const kh=DB.khachHang.find(x=>x.id===p.khId);
-  if(kh && p.httt.includes('Nợ')){
+  if(kh && p.httt!=='Tiền Mặt'){
     const {total}=calcPXKTotals(p.items,p.vat);
     kh.duNo=(kh.duNo||0)+total;
   }
@@ -1687,8 +1687,13 @@ function xoaPXK(id){
   if(p&&isPXKLocked(p)){toast('Phiếu đã bị khóa bởi hóa đơn đã ký – không thể xóa!','error');return;}
   confirm2('Chuyển vào Thùng Rác','Phiếu '+id+' sẽ vào thùng rác. Có thể khôi phục trong 30 ngày.',()=>{
     trashMove('pxk',id);
-    DB.pxk=DB.pxk.filter(x=>x.id!==id);
+    // Soft-delete: đánh dấu _deleted+updatedAt thay vì .filter() để server biết
+    const idx=DB.pxk.findIndex(x=>x.id===id);
+    if(idx>=0) DB.pxk[idx]={...DB.pxk[idx],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển '+id+' vào thùng rác');
+    if(window._autoSave) window._autoSave();
+    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
+    if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),400);
     renderPXKTable();
   });
 }
@@ -1713,7 +1718,7 @@ function renderPXKTable(){
   const q=(document.getElementById('pxk-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('pxk-tbody');
   if(!tbody) return;
-  const list=DB.pxk.filter(p=>!q||p.ma.toLowerCase().includes(q)||(getKH(p.khId).ten||'').toLowerCase().includes(q));
+  const list=DB.pxk.filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q)||(getKH(p.khId).ten||'').toLowerCase().includes(q)));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu xuất kho nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(p=>{
     const kh=getKH(p.khId);
@@ -1721,7 +1726,7 @@ function renderPXKTable(){
     const locked=isPXKLocked(p);
     const isGhiSo=p.soSach==='Ghi Số';
     const ssBdg=isGhiSo?'bdg-green':'bdg-orange';
-    const ttBdg=p.httt.includes('Nợ')?'bdg-red':'bdg-green';
+    const ttBdg=p.httt==='Tiền Mặt'?'bdg-green':'bdg-red';
     const lockIcon=locked?'🔒 ':' ';
     let actions='';
     if(locked){
@@ -1739,7 +1744,7 @@ function renderPXKTable(){
       <td class="tr money m-blue">${fmt(total)} ₫</td>
       <td><span class="bdg ${ssBdg}">${p.soSach}</span></td>
       <td><span class="bdg bdg-gray" style="font-size:10.5px">${p.hoadonVAT}</span></td>
-      <td><span class="bdg ${ttBdg}">${p.httt.includes('Nợ')?'Khắt Nợ':'Đã TT'}</span></td>
+      <td><span class="bdg ${ttBdg}">${p.httt==='Tiền Mặt'?'Đã TT':'Công Nợ'}</span></td>
       <td><div class="acts">${actions}</div></td>
     </tr>`;
   }).join('');
@@ -1801,8 +1806,11 @@ function saveBaoGia(){
 function xoaBaoGia(id){
   confirm2('Chuyển vào Thùng Rác','Báo giá '+id+' sẽ vào thùng rác.',()=>{
     trashMove('baoGia',id);
-    DB.baoGia=DB.baoGia.filter(x=>x.id!==id);
+    const idx=DB.baoGia.findIndex(x=>x.id===id);
+    if(idx>=0) DB.baoGia[idx]={...DB.baoGia[idx],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển '+id+' vào thùng rác');
+    if(window._autoSave) window._autoSave();
+    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
     renderBaoGiaTable();
   });
 }
@@ -1811,7 +1819,7 @@ function renderBaoGiaTable(){
   const q=(document.getElementById('bg-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('bg-tbody');
   if(!tbody) return;
-  const list=DB.baoGia.filter(b=>!q||b.ma.toLowerCase().includes(q)||(getKH(b.khId).ten||'').toLowerCase().includes(q));
+  const list=DB.baoGia.filter(b=>!b._deleted&&(!q||b.ma.toLowerCase().includes(q)||(getKH(b.khId).ten||'').toLowerCase().includes(q)));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-ico">📋</div><p>Chưa có báo giá nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(b=>{
     const kh=getKH(b.khId);
@@ -1850,7 +1858,7 @@ function chuyenSangPXK(bgId){
 // ============ CONG NO ============
 function getKHDuNo(khId){
   let no=0;
-  DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt.includes('Nợ')).forEach(p=>{
+  DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt!=='Tiền Mặt').forEach(p=>{
     const {total}=calcPXKTotals(p.items,p.vat);
     no+=total;
   });
@@ -1896,7 +1904,7 @@ function openCongNoDetail(khId){
   document.getElementById('cn-detail-total').innerHTML=`<span style="font-size:13px;color:var(--t2);font-weight:400">Dư nợ:</span> ${fmt(no)} ₫`;
   document.getElementById('cn-thu-ngay').value=todayStr();
 
-  const pxkList=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt.includes('Nợ'));
+  const pxkList=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt!=='Tiền Mặt');
   const tbody=document.getElementById('cn-detail-tbody');
   tbody.innerHTML=pxkList.map(p=>{
     const {total}=calcPXKTotals(p.items,p.vat);
@@ -1999,7 +2007,7 @@ function saveThuNo(){
   // Cập nhật trạng thái HTTT của các PXK nợ của KH này
   // Ưu tiên PXK cũ nhất trước, cập nhật cho đến khi hết tiền thu
   let remaining=st;
-  const pxkNo=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt.includes('Nợ')&&!isPXKLocked(p))
+  const pxkNo=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt!=='Tiền Mặt'&&!isPXKLocked(p))
     .sort((a,b)=>a.ngay.localeCompare(b.ngay));
   for(const p of pxkNo){
     if(remaining<=0) break;
@@ -2031,7 +2039,7 @@ function renderThuGopTable(){
   const khId=document.getElementById('tg-kh')?.value;
   const tbody=document.getElementById('tg-tbody');
   if(!tbody) return;
-  const list=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt.includes('Nợ'));
+  const list=DB.pxk.filter(p=>p.khId===khId&&p.soSach==='Ghi Số'&&p.httt!=='Tiền Mặt');
   if(!list.length){tbody.innerHTML=`<tr><td colspan="4" class="tc" style="padding:20px;color:var(--t3)">Không có đơn nợ cho khách hàng này</td></tr>`;
     document.getElementById('tg-total').textContent='0 ₫';return;}
   tbody.innerHTML=list.map(p=>{
@@ -2180,7 +2188,9 @@ function renderHoaDon(){
   const tbody=document.getElementById('hd-tbody');
   if(!tbody) return;
   if(!DB.hoaDon.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">🧾</div><p>Chưa có hóa đơn nào. Vào tab "Gom Bảng Kê VAT" để tạo.</p></div></td></tr>`;return;}
-  tbody.innerHTML=DB.hoaDon.map(h=>{
+  const activeHD=DB.hoaDon.filter(h=>!h._deleted);
+  if(!activeHD.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">🧾</div><p>Chưa có hóa đơn nào.</p></div></td></tr>`;return;}
+  tbody.innerHTML=activeHD.map(h=>{
     const kh=getKH(h.khId);
     const signed=h.trangThai==='Đã Ký';
     const bdgClass=signed?'bdg-signed':'bdg-draft';
@@ -2263,7 +2273,7 @@ function exportExcelHoaDonSelected(){
       <div class="hd-header">
         <div class="hd-co">Văn Phòng Phẩm Phú Anh</div>
         <div style="font-size:11px;color:#666">Hệ Thống Phân Phối Thiết Bị Trường Học & Văn Phòng Cao Cấp</div>
-        <div style="font-size:11px;color:#666">DV22-LK949 Khu đất dịch vụ Đào Đặt – Hàng Bè, Phường Kiến Hưng, Hà Nội | Hotline: 0978692470 – 0936029426 | MST: 0111029621</div>
+        <div style="font-size:11px;color:#666">DV22-LK949 Khu đất dịch vụ Đào Đặt – Hàng Bè, Phường Kiến Hưng, Hà Nội | Hotline: 0963042320 | MST: 0111029621</div>
       </div>
       <div class="hd-title">Hóa Đơn Bán Hàng</div>
       <div class="hd-no">Số: <strong style="color:#2563eb">${h.soHD}</strong> &nbsp;|&nbsp; Ngày: ${h.ngay} &nbsp;|&nbsp; ${signed?'<span style="color:green">✅ ĐÃ KÝ</span>':'<span style="color:orange">📝 NHÁP</span>'}</div>
@@ -2308,10 +2318,12 @@ function xoaHoaDon(id){
   confirm2('Chuyển vào Thùng Rác','Hóa đơn '+id+' sẽ vào thùng rác.',()=>{
     trashMove('hoaDon',id);
     if(h&&h.pxkIds) h.pxkIds.forEach(pid=>{const p=DB.pxk.find(x=>x.id===pid);if(p)p.hoadonVAT='Chưa Xuất';});
-    DB.hoaDon=DB.hoaDon.filter(x=>x.id!==id);
+    const idx=DB.hoaDon.findIndex(x=>x.id===id);
+    if(idx>=0) DB.hoaDon[idx]={...DB.hoaDon[idx],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển '+id+' vào thùng rác');
-    renderHoaDon();
-    renderPXKTable();
+    if(window._autoSave) window._autoSave();
+    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
+    renderHoaDon(); renderPXKTable();
   });
 }
 
@@ -2370,7 +2382,9 @@ function inHoaDon(hdId){
     +'<div class="pbuyer"><span class="pbuyer-lbl">Tên khách hàng:</span>'+kh.ten+'</div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">Địa chỉ:</span>'+(kh.diachi||'—')+'</div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">MST:</span>'+(kh.mst||'—')+'</div>'
-    +'<div class="pbuyer"><span class="pbuyer-lbl">Diễn giải:</span>Bán hàng '+kh.ten+'</div>'
+    +'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+(kh.sdt||'—')+'</div>'
+    +(h.httt?'<div class="pbuyer"><span class="pbuyer-lbl">Hình thức TT:</span>'+h.httt+'</div>':'')
+    +(h.ghichu?'<div class="pbuyer"><span class="pbuyer-lbl">Ghi chú:</span>'+h.ghichu+'</div>':'')
     +'<table class="ptbl"><thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th><th>CK%</th><th>Thành tiền</th></tr></thead>'
     +'<tbody>'+rows+'</tbody></table>'
     +'<table class="ptot-tbl">'
@@ -2474,8 +2488,11 @@ function xoaPNK(id){
   if(p&&p.soSach==='Ghi Số'){toast('Phiếu đã ghi sổ – nhấn "Bỏ Ghi Sổ" trước!','error');return;}
   confirm2('Chuyển vào Thùng Rác','Phiếu '+id+' sẽ vào thùng rác.',()=>{
     trashMove('pnk',id);
-    DB.pnk=DB.pnk.filter(x=>x.id!==id);
+    const idx=DB.pnk.findIndex(x=>x.id===id);
+    if(idx>=0) DB.pnk[idx]={...DB.pnk[idx],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển '+id+' vào thùng rác');
+    if(window._autoSave) window._autoSave();
+    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
     renderPNKTable();
   });
 }
@@ -2511,7 +2528,7 @@ function renderPNKTable(){
   const q=(document.getElementById('pnk-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('pnk-tbody');
   if(!tbody) return;
-  const list=DB.pnk.filter(p=>!q||p.ma.toLowerCase().includes(q));
+  const list=DB.pnk.filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q)));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu nhập kho nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(p=>{
     const ncc=getNCC(p.nccId);
@@ -2893,7 +2910,7 @@ function renderAllDM(){
 const CO_SO_IN={
   ten:'CÔNG TY TNHH VĂN PHÒNG PHẨM PHÚ ANH',
   cs:'Cs1 : Kiến Hưng, Hà Đông - Cs2 : Khương Đình, Thanh Xuân',
-  tel:'Tel: 0978692470 - 0936029426',
+  tel:'Tel: 0963042320',
   mst:'MST: 0111029621',
 };
 
@@ -3004,7 +3021,9 @@ function xemPhieuPXK(id){
     +'<div class="pbuyer"><b>Người mua:</b></div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">Tên khách hàng:</span>'+kh.ten+'</div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">Địa chỉ:</span>'+(p.diachi||kh.diachi||'—')+'</div>'
-    +'<div class="pbuyer"><span class="pbuyer-lbl">Diễn giải:</span>Bán hàng '+kh.ten+'</div>'
+    +'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+(kh.sdt||'—')+'</div>'
+    +'<div class="pbuyer"><span class="pbuyer-lbl">Hình thức TT:</span>'+p.httt+'</div>'
+    +(p.ghichu?'<div class="pbuyer"><span class="pbuyer-lbl">Ghi chú:</span>'+p.ghichu+'</div>':'')
     +'<table class="ptbl"><thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th>'+ckTh+'<th>Thành tiền</th></tr></thead>'
     +'<tbody>'+rows+'</tbody></table>'
     +'<table class="ptot-tbl">'+totRows+'</table>'
@@ -3754,9 +3773,15 @@ function mergeArr(local, remote){
       if(remoteTs>localTs) map[x.id]={...x};
     }
   });
-  // Lọc bỏ record đã xóa mềm
-  return Object.values(map).filter(x=>!x._deleted);
+  // GIỮ _deleted trong mảng để sync được — render tự lọc
+  return Object.values(map);
 }
+
+// Lấy mảng đang active (không bị xóa) để render UI
+function activeArr(arr){ return (arr||[]).filter(x=>!x._deleted); }
+
+// Lọc _deleted để render UI — dùng thay vì trực tiếp dùng DB.xxx
+function activeArr(arr){ return (arr||[]).filter(x=>!x._deleted); }
 
 // Xóa mềm: giữ trong DB với _deleted=true để sync biết
 function softDelete(arr, id){
@@ -3769,10 +3794,11 @@ function stamp(obj){return{...obj,updatedAt:Date.now()};}
 
 // Snapshot luôn bao gồm cả record _deleted để sync các máy khác biết
 function getDBSnapshot(){
-  const allSP=[...DB.sanPham,...(DB._deletedSP||[])];
-  const allKH=[...DB.khachHang,...(DB._deletedKH||[])];
-  return {pxk:DB.pxk,baoGia:DB.baoGia,pnk:DB.pnk,quy:DB.quy,hoaDon:DB.hoaDon,
-    sanPham:DB.sanPham,khachHang:DB.khachHang,nhaCungCap:DB.nhaCungCap,nhanVien:DB.nhanVien};
+  // Bao gồm TẤT CẢ records kể cả _deleted để server/Drive biết và không restore lại
+  return {
+    pxk:DB.pxk, baoGia:DB.baoGia, pnk:DB.pnk, quy:DB.quy, hoaDon:DB.hoaDon,
+    sanPham:DB.sanPham, khachHang:DB.khachHang, nhaCungCap:DB.nhaCungCap, nhanVien:DB.nhanVien
+  };
 }
 
 function applyRemoteData(remote){
@@ -3787,7 +3813,7 @@ function applyRemoteData(remote){
   renderDashboard(); renderPXKTable(); renderBaoGiaTable(); renderCongNoTable(); renderPNKTable(); renderAllDM(); renderQuyCards(); renderQuyTable();
 }
 
-// DRIVE SYNC — không khả dụng trên phiên bản Quản Lý
+// DRIVE SYNC — không khả dụng
 function syncLog(){}
 function updateSyncStatus(){}
 function gdGetCfg(){return {};}
@@ -4134,7 +4160,7 @@ function trashRestoreOne(trId){
   toast('✅ Đã khôi phục: '+item.label);
 }
 
-// Xóa vĩnh viễn 1 item — chỉ máy chủ
+// Xóa vĩnh viễn 1 item
 function trashDeleteOne(trId){toast('Chỉ máy chủ chính mới được xóa vĩnh viễn','error');}
 
 // Khôi phục items đã chọn
@@ -4153,9 +4179,7 @@ function trashRestoreSelected(){
 }
 
 // Xóa items đã chọn
-// Xóa items đã chọn — chỉ máy chủ
 function trashDeleteSelected(){toast('Chỉ máy chủ chính mới được xóa vĩnh viễn','error');}
-
 
 // Xóa tất cả vĩnh viễn
 function trashEmptyAll(){toast('Chỉ máy chủ chính mới được xóa vĩnh viễn','error');}
@@ -4165,34 +4189,27 @@ function _trashDoRestore(item){
   const t = item.type;
   const d = item.data;
   if(!d) return;
-  // Xóa _deleted flag nếu có, reset updatedAt
-  const restored = {...d, _deleted:false, updatedAt:Date.now()};
-  if(t==='pxk'){
-    if(!DB.pxk.find(x=>x.id===d.id)) DB.pxk.unshift(restored);
-    renderPXKTable(); renderDashboard();
-  } else if(t==='baoGia'){
-    if(!DB.baoGia.find(x=>x.id===d.id)) DB.baoGia.unshift(restored);
-    renderBaoGiaTable();
-  } else if(t==='pnk'){
-    if(!DB.pnk.find(x=>x.id===d.id)) DB.pnk.unshift(restored);
-    renderPNKTable();
-  } else if(t==='hoaDon'){
-    if(!DB.hoaDon.find(x=>x.id===d.id)) DB.hoaDon.unshift(restored);
-    renderHoaDon();
-  } else if(t==='sp'){
-    if(!DB.sanPham.find(x=>x.id===d.id)) DB.sanPham.unshift(restored);
-    renderDMSanPham();
-  } else if(t==='kh'){
-    if(!DB.khachHang.find(x=>x.id===d.id)) DB.khachHang.unshift(restored);
-    renderDMKH();
-  } else if(t==='ncc'){
-    if(!DB.nhaCungCap.find(x=>x.id===d.id)) DB.nhaCungCap.unshift(restored);
-    renderAllDM();
-  } else if(t==='nv'){
-    if(!DB.nhanVien.find(x=>x.id===d.id)) DB.nhanVien.unshift(restored);
-    renderAllDM();
-  }
+  // Khôi phục: clear _deleted flag, reset updatedAt
+  const restoreInArr=(arr)=>{
+    const idx=arr.findIndex(x=>x.id===d.id);
+    if(idx>=0){
+      arr[idx]={...arr[idx],_deleted:false,updatedAt:Date.now()};
+    } else {
+      arr.unshift({...d,_deleted:false,updatedAt:Date.now()});
+    }
+  };
+  if(t==='pxk'){restoreInArr(DB.pxk);renderPXKTable();renderDashboard();}
+  else if(t==='baoGia'){restoreInArr(DB.baoGia);renderBaoGiaTable();}
+  else if(t==='pnk'){restoreInArr(DB.pnk);renderPNKTable();}
+  else if(t==='hoaDon'){restoreInArr(DB.hoaDon);renderHoaDon();}
+  else if(t==='sp'){restoreInArr(DB.sanPham);renderDMSanPham();}
+  else if(t==='kh'){restoreInArr(DB.khachHang);renderDMKH();}
+  else if(t==='ncc'){restoreInArr(DB.nhaCungCap);renderAllDM();}
+  else if(t==='nv'){restoreInArr(DB.nhanVien);renderAllDM();}
   if(window._autoSave) window._autoSave();
+  // Push lên server để các máy khác biết
+  if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
+  if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),400);
 }
 
 // Checkbox chọn tất cả
@@ -4502,7 +4519,7 @@ function tonResetAll(){
   // Bước 5: Auto-reconnect Drive + LAN nếu đã cấu hình trước đó
   setTimeout(()=>{
 
-    // Drive sync không có trên phiên bản Quản Lý
+    // Drive sync không có
 
 
     // ── Auto-reconnect LAN ────────────────────────────────────
