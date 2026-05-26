@@ -1099,7 +1099,8 @@ function _buildPrintHTML(body){
 const CO_SO_IN={
   ten:'CÔNG TY TNHH VĂN PHÒNG PHẨM PHÚ ANH',
   cs:'Cs1: Kiến Hưng, Hà Đông - Cs2: Khương Đình, Thanh Xuân',
-  tel:'Tel: 0963042320',
+  tel:'Tel: 0963042320 - 0936029426',
+  email:'Email: vanphongphamphuanh@gmail.com',
 };
 
 function _printTitle(ten,ngay,so){
@@ -1111,33 +1112,33 @@ function _printTitle(ten,ngay,so){
 
 function _printSign(ngay,l1,l2,n2){
   const d=new Date(ngay||todayStr());
-  return '<div class="psign-date">Ngày '+d.getDate()+' tháng '+(d.getMonth()+1)+' năm '+d.getFullYear()+'</div>'
-    +'<div class="psign">'
-    +'<div><div class="psign-role">'+l1+'</div><div class="psign-note">(Ký, họ tên)</div><div class="psign-space"></div></div>'
-    +'<div><div class="psign-role">'+l2+'</div><div class="psign-note">'+(n2||'(Ký, họ tên, đóng dấu)')+'</div><div class="psign-space"></div></div>'
+  const dateStr='Ngày '+d.getDate()+' tháng '+(d.getMonth()+1)+' năm '+d.getFullYear();
+  return '<div class="psign">'
+    // CỘT TRÁI: Người bán hàng
+    +'<div style="text-align:center">'
+    +'<div class="psign-role">'+l2+'</div>'
+    +'<div class="psign-note">'+(n2||'(Ký, họ tên, đóng dấu)')+'</div>'
+    +'<div class="psign-space"></div>'
+    +'</div>'
+    // CỘT PHẢI: Ngày + Người mua hàng
+    +'<div style="text-align:center">'
+    +'<div style="font-size:12.5px;margin-bottom:6px">'+dateStr+'</div>'
+    +'<div class="psign-role">'+l1+'</div>'
+    +'<div class="psign-note" style="font-style:italic">(Thanh toán tiền mặt hay chuyển khoản)</div>'
+    +'<div class="psign-note">(Ký, họ tên)</div>'
+    +'<div class="psign-space"></div>'
+    +'</div>'
     +'</div>';
 }
 
 function _printCo(no,co){
+  // Góc phải (Nợ/Có/Loại tiền) đã bỏ theo yêu cầu
   return '<div class="ph"><div class="ph-co">'
     +'<div class="ph-co-name">'+CO_SO_IN.ten+'</div>'
     +'<div class="ph-co-sub">'+CO_SO_IN.cs+'</div>'
     +'<div class="ph-co-sub">'+CO_SO_IN.tel+'</div>'
-    +'</div>'+(no?'<div class="ph-so"><div><b>Nợ:</b> '+no+'</div><div><b>Có:</b> '+(co||'5111')+'</div><div><b>Loại tiền:</b> VND</div></div>':'')+'</div>';
-}
-function _printTitle(ten,ngay,so){
-  const d=new Date(ngay||todayStr());
-  return '<div class="ptitle"><div class="ptitle-main">'+ten+'</div>'
-    +'<div class="ptitle-date">Ngày '+d.getDate()+' tháng '+(d.getMonth()+1)+' năm '+d.getFullYear()+'</div>'
-    +'<div class="ptitle-so">Số: <u><b>'+so+'</b></u></div></div>';
-}
-function _printSign(ngay,l1,l2,n2){
-  const d=new Date(ngay||todayStr());
-  return '<div class="psign-date">Ngày '+d.getDate()+' tháng '+(d.getMonth()+1)+' năm '+d.getFullYear()+'</div>'
-    +'<div class="psign">'
-    +'<div><div class="psign-role">'+l1+'</div><div class="psign-note">(Ký, họ tên)</div><div class="psign-space"></div></div>'
-    +'<div><div class="psign-role">'+l2+'</div><div class="psign-note">'+(n2||'(Ký, họ tên, đóng dấu)')+'</div><div class="psign-space"></div></div>'
-    +'</div>';
+    +'<div class="ph-co-sub">'+CO_SO_IN.email+'</div>'
+    +'</div></div>';
 }
 function soThanhChu(so){
   if(!so||so===0)return 'Không đồng';
