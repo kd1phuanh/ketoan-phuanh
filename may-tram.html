@@ -1626,14 +1626,14 @@ function inBaoGia(bgId){
     const tt=goc-ck;
     sub+=tt; tongGoc+=goc; tongCK+=ck;
     return '<tr>'
-      +'<td class="tc">'+(i+1)+'</td>'
-      +'<td>'+it.spId+'</td>'
+      +'<td class="tc" style="width:36px">'+(i+1)+'</td>'
+      +'<td style="width:100px">'+it.spId+'</td>'
       +'<td>'+it.ten+'</td>'
-      +'<td class="tc">'+it.don+'</td>'
-      +'<td class="tr">'+it.sl+'</td>'
-      +'<td class="tr">'+fmt(it.donGia)+'</td>'
-      +'<td class="tr">'+(it.ck?it.ck+'%':'—')+'</td>'
-      +'<td class="tr">'+fmt(tt)+'</td>'
+      +'<td class="tc" style="width:48px">'+it.don+'</td>'
+      +'<td class="tr" style="width:60px">'+it.sl+'</td>'
+      +'<td class="tr" style="width:90px">'+fmt(it.donGia)+'</td>'
+      +'<td class="tc" style="width:55px">'+(it.ck?it.ck+'%':'—')+'</td>'
+      +'<td class="tr" style="width:95px">'+fmt(tt)+'</td>'
       +'</tr>';
   }).join('');
 
@@ -1652,12 +1652,15 @@ function inBaoGia(bgId){
     +(kh.sdt?'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+kh.sdt+'</div>':'')
     +(nv.ten?'<div class="pbuyer"><span class="pbuyer-lbl">Nhân viên:</span>'+nv.ten+(nv.sdt?' – '+nv.sdt:'')+'</div>':'')
     +(b.ghichu?'<div class="pbuyer"><span class="pbuyer-lbl">Ghi chú:</span>'+b.ghichu+'</div>':'')
-    +'<table class="ptbl"><thead><tr>'
-    +'<th style="width:36px">STT</th><th style="width:100px">Mã hàng</th><th>Tên hàng</th>'
-    +'<th style="width:48px">ĐVT</th><th style="width:60px">Số lượng</th>'
-    +'<th style="width:80px">Đơn giá</th>'
-    +(hasCK?'<th style="width:60px">CK%</th>':'')
-    +'<th style="width:90px">Thành tiền</th>'
+    +'<table class="ptbl" style="table-layout:fixed;width:100%"><colgroup>'
+    +'<col style="width:36px"><col style="width:100px"><col><col style="width:48px">'
+    +'<col style="width:60px"><col style="width:90px"><col style="width:55px"><col style="width:95px">'
+    +'</colgroup><thead><tr>'
+    +'<th class="tc">STT</th><th>Mã hàng</th><th>Tên hàng</th>'
+    +'<th class="tc">ĐVT</th><th class="tc">Số lượng</th>'
+    +'<th class="tr">Đơn giá</th>'
+    +'<th class="tc">CK%</th>'
+    +'<th class="tr">Thành tiền</th>'
     +'</tr></thead><tbody>'+rows+'</tbody></table>'
     +'<table class="ptot-tbl">'
     +'<tr><td class="ptot-lbl">Cộng tiền hàng (Đã trừ CK)</td><td class="ptot-amt">'+fmt(sub)+'</td></tr>'
