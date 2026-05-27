@@ -790,7 +790,32 @@ function showTab(el,id){
 }
 function openMo(id){document.getElementById(id).classList.add('open');}
 function closeMo(id){document.getElementById(id).classList.remove('open');}
-document.querySelectorAll('.mo').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+// Các modal QUAN TRỌNG (có form nhập liệu) - KHÔNG đóng khi click ngoài
+const MODAL_NO_BACKDROP_CLOSE = new Set(['mo-pxk','mo-baogia','mo-pnk','mo-dm-tram']);
+
+document.querySelectorAll('.mo').forEach(o=>{
+  o.addEventListener('click',e=>{
+    if(e.target!==o) return; // click vào nội dung bên trong → bỏ qua
+    if(MODAL_NO_BACKDROP_CLOSE.has(o.id)) return; // modal quan trọng → không đóng
+    o.classList.remove('open');
+  });
+});
+
+// ESC để đóng modal (chỉ đóng modal không quan trọng, cảnh báo với modal quan trọng)
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape') return;
+  const opened=[...document.querySelectorAll('.mo.open')];
+  if(!opened.length) return;
+  const top=opened[opened.length-1];
+  if(MODAL_NO_BACKDROP_CLOSE.has(top.id)){
+    // Modal quan trọng: hỏi trước khi đóng
+    if(confirm('Bạn có muốn hủy và đóng phiếu này không?\nDữ liệu chưa lưu sẽ bị mất.'))
+      top.classList.remove('open');
+  } else {
+    top.classList.remove('open');
+  }
+});
 
 // ============ AUTOCOMPLETE (KH) ============
 function acSearch(ctx,q){
