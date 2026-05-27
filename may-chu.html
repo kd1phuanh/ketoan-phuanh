@@ -3995,12 +3995,12 @@ function syncLog(msg,type='info'){const el=document.getElementById('sync-log');i
 function updateSyncStatus(s){const el=document.getElementById('sync-status-txt');if(el)el.textContent=s==='connected'?'Đã kết nối Drive':s==='disconnected'?'Chưa kết nối':'Đang kết nối…';}
 function gdGetCfg(){return JSON.parse(localStorage.getItem('phuanh_sync_cfg')||'{}');}
 function gdSaveCfg(cfg){localStorage.setItem('phuanh_sync_cfg',JSON.stringify(cfg));}
-function gdConnect(){const url=(document.getElementById('gd-script-url')?.value||'').trim();const iv=parseInt(document.getElementById('gd-interval')?.value||'600');if(!url){toast('Nhập URL Apps Script!','error');return;}syncLog('🔌 Đang kết nối...');fetch(url+'?action=ping',{signal:AbortSignal.timeout(8000)}).then(r=>r.json()).then(d=>{if(d.ok){gdSaveCfg({scriptUrl:url,interval:iv,connected:true});updateSyncStatus('connected');syncLog('✅ Kết nối thành công!','ok');if(iv>0){if(window._syncInterval)clearInterval(window._syncInterval);window._syncInterval=setInterval(()=>gdPush(true),iv*1000);}gdPull(false);}else{updateSyncStatus('disconnected');syncLog('❌ Phản hồi lỗi','err');}}).catch(e=>{updateSyncStatus('disconnected');syncLog('❌ '+e.message,'err');});}
+function gdConnect(){const url=(document.getElementById('gd-script-url')?.value||'').trim();const iv=parseInt(document.getElementById('gd-interval')?.value||'600');if(!url){toast('Nhập URL Apps Script!','error');return;}syncLog('🔌 Đang kết nối...');fetch(url+'?action=ping',{signal:AbortSignal.timeout(8000)}).then(r=>r.json()).then(d=>{if(d.ok){gdSaveCfg({scriptUrl:url,interval:iv,connected:true});updateSyncStatus('connected');syncLog('✅ Kết nối thành công!','ok');if(iv>0){if(window._syncInterval)clearInterval(window._syncInterval);window._syncInterval=setInterval(()=>gdPush(true),iv*1000);}gdPull(false);setTimeout(()=>gdPush(true),3000);}else{updateSyncStatus('disconnected');syncLog('❌ Phản hồi lỗi','err');}}).catch(e=>{updateSyncStatus('disconnected');syncLog('❌ '+e.message,'err');});}
 function gdPush(silent=false){const cfg=gdGetCfg();if(!cfg.scriptUrl)return;if(!silent)syncLog('⬆ Đang đẩy lên Drive...');fetch(cfg.scriptUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save',version:Date.now(),data:getDBSnapshot()}),signal:AbortSignal.timeout(15000)}).then(r=>r.json()).then(d=>{if(!silent)syncLog(d.ok?'✅ Đã lưu':'❌ '+d.msg,d.ok?'ok':'err');}).catch(e=>{if(!silent)syncLog('❌ '+e.message,'err');});}
-function gdPull(silent=false){const cfg=gdGetCfg();if(!cfg.scriptUrl)return;if(!silent)syncLog('⬇ Đang tải từ Drive...');fetch(cfg.scriptUrl+'?action=load',{signal:AbortSignal.timeout(15000)}).then(r=>r.json()).then(d=>{if(d.ok&&d.data){const remote=d.data;['pxk','baoGia','pnk','quy','hoaDon','sanPham','khachHang','nhaCungCap','nhanVien'].forEach(k=>{if(remote[k])DB[k]=mergeArr(DB[k],remote[k]);});saveLocal();renderDashboard();if(!silent)syncLog('✅ Đã cập nhật từ Drive','ok');}else if(!silent)syncLog('⚠️ Không có dữ liệu','warn');}).catch(e=>{if(!silent)syncLog('❌ '+e.message,'err');});}
+function gdPull(silent=false){const cfg=gdGetCfg();if(!cfg.scriptUrl)return;if(!silent)syncLog('⬇ Đang tải từ Drive...');fetch(cfg.scriptUrl+'?action=load',{signal:AbortSignal.timeout(15000)}).then(r=>r.json()).then(d=>{if(d.ok&&d.data){const remote=d.data;['pxk','baoGia','pnk','quy','hoaDon','sanPham','khachHang','nhaCungCap','nhanVien'].forEach(k=>{if(remote[k])DB[k]=mergeArr(DB[k],remote[k]);});if(window._autoSave)window._autoSave();renderDashboard();if(!silent)syncLog('✅ Đã cập nhật từ Drive','ok');}else if(!silent)syncLog('⚠️ Không có dữ liệu','warn');}).catch(e=>{if(!silent)syncLog('❌ '+e.message,'err');});}
 function gdExportJSON(){const blob=new Blob([JSON.stringify({version:Date.now(),data:getDBSnapshot()},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='phuanh_backup_'+todayStr()+'.json';a.click();URL.revokeObjectURL(url);toast('✅ Đã xuất backup JSON!');}
 function gdImportJSON(){document.getElementById('gd-import-file')?.click();}
-function gdDoImport(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{try{const obj=JSON.parse(e.target.result);const data=obj.data||obj;['pxk','baoGia','pnk','quy','hoaDon','sanPham','khachHang','nhaCungCap','nhanVien'].forEach(k=>{if(data[k])DB[k]=mergeArr(DB[k],data[k]);});saveLocal();renderDashboard();toast('✅ Đã nhập dữ liệu backup!');}catch(err){toast('❌ File không hợp lệ!','error');}};reader.readAsText(file);}
+function gdDoImport(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{try{const obj=JSON.parse(e.target.result);const data=obj.data||obj;['pxk','baoGia','pnk','quy','hoaDon','sanPham','khachHang','nhaCungCap','nhanVien'].forEach(k=>{if(data[k])DB[k]=mergeArr(DB[k],data[k]);});if(window._autoSave)window._autoSave();renderDashboard();toast('✅ Đã nhập dữ liệu backup!');}catch(err){toast('❌ File không hợp lệ!','error');}};reader.readAsText(file);}
 
 
 // ============================================================
@@ -4466,7 +4466,17 @@ function trashRestoreOne(trId){
 }
 
 // Xóa vĩnh viễn 1 item
-function trashDeleteOne(trId){toast('Chỉ máy chủ chính mới được xóa vĩnh viễn','error');}
+function trashDeleteOne(trId){
+  confirm2('Xóa Vĩnh Viễn','Xác nhận xóa vĩnh viễn? Không thể khôi phục!',()=>{
+    const arr=trashLoad().filter(x=>x.id!==trId);
+    trashSave(arr);
+    renderTrash();
+    toast('🗑️ Đã xóa vĩnh viễn');
+    if(window._autoSave) window._autoSave();
+    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
+    if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),400);
+  });
+}
 
 // Khôi phục items đã chọn
 function trashRestoreSelected(){
@@ -4484,10 +4494,26 @@ function trashRestoreSelected(){
 }
 
 // Xóa items đã chọn
-function trashDeleteSelected(){toast('Chỉ máy chủ chính mới được xóa vĩnh viễn','error');}
+function trashDeleteSelected(){
+  const ids=Array.from(document.querySelectorAll('.trash-chk:checked')).map(c=>c.dataset.trId);
+  if(!ids.length) return;
+  confirm2('Xóa Vĩnh Viễn',`Xóa vĩnh viễn ${ids.length} mục? Không thể khôi phục!`,()=>{
+    const arr=trashLoad().filter(x=>!ids.includes(x.id));
+    trashSave(arr);renderTrash();
+    toast('🗑️ Đã xóa '+ids.length+' mục vĩnh viễn');
+    if(window._autoSave) window._autoSave();
+  });
+}
 
 // Xóa tất cả vĩnh viễn
-function trashEmptyAll(){toast('Chỉ máy chủ chính mới được xóa vĩnh viễn','error');}
+function trashEmptyAll(){
+  const arr=trashLoad();if(!arr.length)return;
+  confirm2('Dọn Thùng Rác',`Xóa vĩnh viễn TẤT CẢ ${arr.length} mục? Không thể khôi phục!`,()=>{
+    trashSave([]);renderTrash();
+    toast('🗑️ Đã dọn sạch thùng rác');
+    if(window._autoSave) window._autoSave();
+  });
+}
 
 // Thực hiện khôi phục về đúng mảng DB
 function _trashDoRestore(item){
@@ -4826,7 +4852,7 @@ function tonResetAll(){
 
     // Auto-reconnect Drive
     const gdCfg=JSON.parse(localStorage.getItem('phuanh_sync_cfg')||'{}');
-    if(gdCfg.scriptUrl&&gdCfg.connected){fetch(gdCfg.scriptUrl+'?action=ping',{signal:AbortSignal.timeout(6000)}).then(r=>r.json()).then(d=>{if(d.ok){updateSyncStatus('connected');gdPull(true);if(gdCfg.interval>0){if(window._syncInterval)clearInterval(window._syncInterval);window._syncInterval=setInterval(()=>gdPush(true),gdCfg.interval*1000);}}else updateSyncStatus('disconnected');}).catch(()=>updateSyncStatus('disconnected'));}
+    if(gdCfg.scriptUrl&&gdCfg.connected){fetch(gdCfg.scriptUrl+'?action=ping',{signal:AbortSignal.timeout(6000)}).then(r=>r.json()).then(d=>{if(d.ok){updateSyncStatus('connected');gdPull(true);setTimeout(()=>gdPush(true),3000);if(gdCfg.interval>0){if(window._syncInterval)clearInterval(window._syncInterval);window._syncInterval=setInterval(()=>gdPush(true),gdCfg.interval*1000);}}else updateSyncStatus('disconnected');}).catch(()=>updateSyncStatus('disconnected'));}
 
 
     // ── Auto-reconnect LAN ────────────────────────────────────
