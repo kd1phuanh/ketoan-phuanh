@@ -132,6 +132,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--t1
 .sp-drop-list::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
 .sp-drop-row{display:grid;grid-template-columns:110px 1fr 80px 100px;padding:6px 10px;font-size:12.5px;cursor:pointer;border-bottom:1px solid #f1f5f9;gap:6px;align-items:center;transition:background .08s}
 .sp-drop-row:hover{background:#e8f4fd}
+.sp-drop-row-active{background:#dbeafe!important;outline:2px solid #3b82f6;outline-offset:-2px}
 .sp-drop-row .sp-ma{color:#2563eb;font-weight:700;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sp-drop-row .sp-ten{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sp-drop-row .sp-ton{text-align:right;font-weight:600;color:#0891b2}
@@ -226,13 +227,13 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--t1
     <div class="toolbar">
       <button class="btn btn-primary" onclick="openModalPXK()">+ Lập Phiếu Xuất Kho</button>
       <button class="btn btn-purple" onclick="thuGopCongNo()">📤 Thu Tiền Gộp Đơn Nợ</button>
-      <button class="btn btn-green" onclick="exportExcel('pxk')">📊 Xuất Excel</button>
+      <button class="btn btn-green" onclick="exportExcel('pxk')" title="Tích chọn hàng để xuất riêng, không tích = xuất tất cả">📊 Xuất Excel</button>
       <div class="search-box"><span class="si">🔍</span><input type="text" id="pxk-search" placeholder="Tìm mã PXK…" oninput="renderPXKTable()"></div>
     </div>
     <div class="tbl-wrap">
       <table class="dtbl">
         <thead><tr>
-          <th><input type="checkbox" id="pxk-chkall"></th>
+          <th><input type="checkbox" id="pxk-chkall" onchange="document.querySelectorAll('.pxk-chk:not([disabled])').forEach(c=>c.checked=this.checked)"></th>
           <th>Ngày Lập</th><th>Mã PXK</th><th>Khách Hàng</th>
           <th class="tr">Tổng Tiền (+VAT)</th><th>Số Sách</th><th>Hóa Đơn VAT</th><th>TT</th><th>Hành Động</th>
         </tr></thead>
@@ -742,6 +743,13 @@ function confirm2(title,msg,cb){
   const btn=document.getElementById('confirm-ok');
   btn.onclick=()=>{closeMo('mo-confirm');cb();};
   openMo('mo-confirm');
+  // FIX 3: Enter để xác nhận, Escape để hủy
+  setTimeout(()=>btn.focus(),100);
+  const onKey=function(e){
+    if(e.key==='Enter'){e.preventDefault();btn.click();document.removeEventListener('keydown',onKey);}
+    else if(e.key==='Escape'){closeMo('mo-confirm');document.removeEventListener('keydown',onKey);}
+  };
+  document.addEventListener('keydown',onKey);
 }
 
 // ============ NAV ============
@@ -813,11 +821,40 @@ function spAcSearch(inputEl,ctx){
     drop=document.createElement('div');drop.className='sp-drop-wrap';
     drop.innerHTML=`<div class="sp-drop-header"><span>Mã hàng</span><span>Tên hàng</span><span class="th-r">Tồn</span><span class="th-r">Giá bán</span></div><div class="sp-drop-list"></div><div class="sp-drop-footer"><label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;color:var(--t2)"><div class="sp-toggle-sw" data-on="0" onclick="spToggleTon(this.closest('label'))"></div>Chỉ còn tồn</label><span class="sp-drop-count"></span></div>`;
     wrap.appendChild(drop);
-    document.addEventListener('mousedown',function h(e){if(!wrap.contains(e.target))drop.classList.remove('open');});
+    document.addEventListener('mousedown',function h(e){if(!wrap.contains(e.target)){drop.classList.remove('open');drop.dataset.sel='-1';}});
+
+    // FIX 2: Phím bàn phím điều hướng dropdown
+    inputEl.addEventListener('keydown',function(e){
+      const rows=drop.querySelectorAll('.sp-drop-row');
+      let sel=parseInt(drop.dataset.sel??'-1');
+      if(e.key==='ArrowDown'){
+        e.preventDefault();
+        sel=Math.min(sel+1,rows.length-1);
+        drop.dataset.sel=sel;
+        rows.forEach((r,i)=>r.classList.toggle('sp-drop-row-active',i===sel));
+        if(rows[sel]) rows[sel].scrollIntoView({block:'nearest'});
+      } else if(e.key==='ArrowUp'){
+        e.preventDefault();
+        sel=Math.max(sel-1,0);
+        drop.dataset.sel=sel;
+        rows.forEach((r,i)=>r.classList.toggle('sp-drop-row-active',i===sel));
+        if(rows[sel]) rows[sel].scrollIntoView({block:'nearest'});
+      } else if(e.key==='Enter'){
+        e.preventDefault();
+        if(sel>=0&&rows[sel]){rows[sel].dispatchEvent(new MouseEvent('mousedown'));drop.dataset.sel='-1';}
+        else if(rows.length===1){rows[0].dispatchEvent(new MouseEvent('mousedown'));}
+      } else if(e.key==='Escape'){
+        drop.classList.remove('open');drop.dataset.sel='-1';
+      } else if(e.key==='Tab'){
+        if(sel>=0&&rows[sel]){e.preventDefault();rows[sel].dispatchEvent(new MouseEvent('mousedown'));drop.dataset.sel='-1';}
+      }
+    });
+    drop.dataset.sel='-1';
   }
   const onlyTon=drop.querySelector('.sp-toggle-sw')?.dataset.on==='1';
   spRenderDropList(drop,q,ctx,onlyTon);
   drop.classList.add('open');
+  drop.dataset.sel='-1';
 }
 function spRenderDropList(drop,q,ctx,onlyTon){
   let list=DB.sanPham.filter(s=>{
@@ -1708,19 +1745,31 @@ function saveDMTram(){
 function exportExcel(type){
   let csv='',name='export';
   if(type==='pxk'){
+    // Lấy danh sách được tích — nếu không tích thì xuất tất cả
+    const checkedIds=Array.from(document.querySelectorAll('.pxk-chk:checked')).map(c=>c.dataset.id);
+    const list=checkedIds.length>0
+      ? DB.pxk.filter(p=>!p._deleted&&checkedIds.includes(p.id))
+      : DB.pxk.filter(p=>!p._deleted);
+    const note=checkedIds.length>0?`(${checkedIds.length} đơn đã chọn)`:'(tất cả)';
     csv='Ngày,Mã PXK,Khách Hàng,Mã SKU,Tên Hàng,ĐVT,SL,Đơn Giá,CK%,Thành Tiền,Tổng Phiếu,Số Sách\n';
-    DB.pxk.forEach(p=>{const kh=getKH(p.khId);const{total}=calcPXKTotals(p.items,p.vat);
+    list.forEach(p=>{const kh=getKH(p.khId);const{total}=calcPXKTotals(p.items,p.vat);
       (p.items||[]).forEach(it=>{csv+=`${p.ngay},${p.ma},"${kh.ten}",${it.spId},"${it.ten}",${it.don},${it.sl},${it.donGia},${it.ck||0}%,${Math.round(it.sl*it.donGia*(1-(it.ck||0)/100))},${Math.round(total)},${p.soSach}\n`;});});
     name='PXK_ChiTiet';
+    toast(`✅ Đã xuất ${list.length} phiếu ${note}`);
   } else if(type==='baogia'){
+    const checkedIds=Array.from(document.querySelectorAll('#bg-tbody input[type=checkbox]:checked')).map((_,i)=>{
+      // BG không có data-id, lấy theo index
+      return null;
+    });
+    // BaoGia: xuất tất cả (chưa có checkbox data-id)
     csv='Ngày,Mã BG,Khách Hàng,Mã SKU,Tên Hàng,SL,Đơn Giá,CK%,Thành Tiền,Trạng Thái\n';
-    DB.baoGia.forEach(b=>{const kh=getKH(b.khId);
+    DB.baoGia.filter(b=>!b._deleted).forEach(b=>{const kh=getKH(b.khId);
       (b.items||[]).forEach(it=>{const tt=it.sl*it.donGia*(1-(it.ck||0)/100);csv+=`${b.ngay},${b.ma},"${kh.ten}",${it.spId},"${it.ten}",${it.sl},${it.donGia},${it.ck||0}%,${Math.round(tt)},${b.trangThai}\n`;});});
     name='BaoGia_ChiTiet';
+    toast('✅ Đã xuất BaoGia_ChiTiet.csv!');
   }
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name+'_'+todayStr()+'.csv';a.click();URL.revokeObjectURL(url);
-  toast('✅ Đã xuất '+name+'.csv!');
 }
 
 // ============ LAN SYNC ============
@@ -1763,7 +1812,8 @@ function tramConnect(){
       setSyncBadge('ok','Đã kết nối: '+ip);
       document.getElementById('btn-connect').style.display='none';
       document.getElementById('btn-disconnect').style.display='inline-flex';
-      const cfg={ip,port,name,url:_tramBaseUrl};
+      const sec=parseInt(document.getElementById('auto-sync-interval')?.value)||30;
+      const cfg={ip,port,name,url:_tramBaseUrl,autoSyncSec:sec};
       localStorage.setItem('phuanh_tram_cfg',JSON.stringify(cfg));
       tramPull(false);
       setAutoSync();
@@ -2678,20 +2728,23 @@ function trashRestoreOne(trId){
         .then(d=>{
           if(d.ok){
             setSyncBadge('ok','Đã kết nối: '+d.name);
-            // Update UI
-            const cb=document.getElementById('tram-connect-btn');
-            const db=document.getElementById('tram-disconnect-btn');
+            // Update UI — dùng đúng ID của button
+            const cb=document.getElementById('btn-connect');
+            const db=document.getElementById('btn-disconnect');
             if(cb) cb.style.display='none';
             if(db) db.style.display='inline-flex';
             // Pull ngay + auto interval
             tramPull(true);
-            const sec=parseInt(document.getElementById('auto-sync-interval')?.value)||30;
+            const sec=cfg.autoSyncSec||parseInt(document.getElementById('auto-sync-interval')?.value)||30;
             if(sec>0){
               if(_tramAutoInterval) clearInterval(_tramAutoInterval);
               _tramAutoInterval=setInterval(()=>tramPull(true),sec*1000);
               const el=document.getElementById('auto-sync-status');
               if(el) el.textContent='Tự động mỗi '+sec+'s';
             }
+            // Hiển thị IP đã kết nối lên form
+            const ipEl=document.getElementById('srv-ip');
+            if(ipEl&&cfg.ip) ipEl.value=cfg.ip;
             console.log('[LAN Tram] Reconnect OK');
           } else {
             setSyncBadge('err','Mất kết nối server');
