@@ -614,6 +614,7 @@ select{font-family:inherit}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn btn-primary" id="lan-connect-btn" onclick="lanConnect()">🔌 Kết Nối</button>
       <button class="btn btn-green" onclick="lanPush()">⬆ Đẩy Dữ Liệu Lên</button>
+      <button class="btn btn-red btn-sm" onclick="lanForcePush()" title="Ghi đè toàn bộ dữ liệu lên server, bao gồm các record đã xóa">🔄 Ghi Đè Server</button>
       <button class="btn btn-purple" onclick="lanPull()">⬇ Lấy Dữ Liệu Về</button>
       <button class="btn btn-outline" onclick="lanDisconnect()" id="lan-disconnect-btn" style="display:none">⏹ Ngắt Kết Nối</button>
     </div>
@@ -2937,8 +2938,9 @@ function deleteDM(type, id){
     if(i>=0) arr[i]={...arr[i],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển vào thùng rác');
     if(window._autoSave) window._autoSave();
-    // Push ngay lên Drive/server để các máy khác biết
-    if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),300);
+    // Push ngay lên LAN server VÀ Drive để không bị restore
+    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
+    if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),400);
     renderAllDM();
   });
 }
@@ -3610,6 +3612,28 @@ function lanDisconnect(){
   document.getElementById('lan-connect-btn').style.display='inline-flex';
   document.getElementById('lan-disconnect-btn').style.display='none';
   syncLog('⏹ Đã ngắt kết nối LAN');
+}
+
+function lanForcePush(){
+  const url=_lanBaseUrl||getLanUrl();
+  if(!url){toast('Chưa kết nối máy chủ LAN!','error');return;}
+  confirm2('Ghi Đè Server','Toàn bộ dữ liệu local (bao gồm các mục đã xóa) sẽ ghi đè lên server. Tiếp tục?',()=>{
+    const snap=getDBSnapshot();
+    fetch(url+'/save',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({version:Date.now(),machine:'MayChу-ForceOverwrite',data:snap}),
+      signal:AbortSignal.timeout(15000)})
+      .then(r=>r.json())
+      .then(d=>{
+        if(d.ok){
+          toast('✅ Đã ghi đè server thành công! Các máy khác sẽ nhận dữ liệu mới khi sync.');
+          document.getElementById('lan-log')&&(document.getElementById('lan-log').innerHTML+=
+            `<div style="color:#4ade80">[${new Date().toLocaleTimeString('vi-VN')}] ✅ Force push OK</div>`);
+        } else {
+          toast('❌ Lỗi: '+d.msg,'error');
+        }
+      })
+      .catch(e=>toast('❌ '+e.message,'error'));
+  });
 }
 
 function lanPush(){
