@@ -2931,13 +2931,15 @@ function deleteDM(type, id){
   const names={sp:'sản phẩm',kh:'khách hàng',ncc:'nhà cung cấp',nv:'nhân viên'};
   confirm2('Chuyển vào Thùng Rác','Xác nhận chuyển '+names[type]+' này vào thùng rác?',()=>{
     trashMove(type, id);
-    // Soft delete khỏi danh sách hiển thị
+    // Soft-delete: đánh _deleted+updatedAt để server/Drive biết
     const arr={sp:DB.sanPham,kh:DB.khachHang,ncc:DB.nhaCungCap,nv:DB.nhanVien}[type];
     const i=(arr||[]).findIndex(x=>x.id===id);
-    if(i>=0) arr.splice(i,1);
+    if(i>=0) arr[i]={...arr[i],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển vào thùng rác');
+    if(window._autoSave) window._autoSave();
+    // Push ngay lên Drive/server để các máy khác biết
+    if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),300);
     renderAllDM();
-    if(gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),300);
   });
 }
 
