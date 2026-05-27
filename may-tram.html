@@ -1078,25 +1078,27 @@ function savePXK(){
   if(!khId||!ngay){toast('Vui lòng chọn KH và ngày!','error');return;}
   const items=getItemsFromTbody('pxk-items');
   if(!items.length){toast('Vui lòng thêm ít nhất 1 mặt hàng!','error');return;}
-  const vatPct=parseInt(document.getElementById('pxk-vat').value)||8;
+  const vatPct=Number(document.getElementById('pxk-vat').value??8);
   const ctx=DB._editCtx;
   if(ctx&&ctx.id){
     const p=DB.pxk.find(x=>x.id===ctx.id);
-    // Hoàn lại tồn kho cũ
-    (p.items||[]).forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=(sp.ton||0)+it.sl;sp.updatedAt=Date.now();}});
+    // Chỉ hoàn tồn cũ nếu phiếu đang là Ghi Sổ
+    // (Nháp = đã được hoàn tồn khi bỏ GS rồi, không hoàn lại)
+    if(p.soSach==='Ghi Số'){
+      (p.items||[]).forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=(sp.ton||0)+it.sl;sp.updatedAt=Date.now();}});
+    }
     Object.assign(p,stamp({khId,ngay,kdId:document.getElementById('pxk-kd').value,httt:document.getElementById('pxk-httt').value,vat:vatPct,diachi:document.getElementById('pxk-diachi').value,sdt:document.getElementById('pxk-sdt').value,ghichu:document.getElementById('pxk-ghichu').value,items,soSach:'Ghi Số'}));
-    // Trừ tồn kho mới
+    // Trừ tồn kho theo items mới
     items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
     toast('Đã cập nhật PXK!');
   } else {
     const ma=genId('PXK');
     DB.pxk.unshift(stamp({id:ma,ma,ngay,khId,kdId:document.getElementById('pxk-kd').value,httt:document.getElementById('pxk-httt').value,vat:vatPct,diachi:document.getElementById('pxk-diachi').value,sdt:document.getElementById('pxk-sdt').value,ghichu:document.getElementById('pxk-ghichu').value,items,soSach:'Ghi Số',hoadonVAT:'Chưa Xuất'}));
-    // Trừ tồn kho khi xuất
+    // Trừ tồn kho khi xuất mới
     items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
     toast('Đã lập & ghi sổ PXK: '+ma);
   }
   closeMo('mo-pxk');renderPXKTable();
-  // Auto push lên server ngay sau khi lưu
   if(_tramBaseUrl) setTimeout(()=>_tramPushMerged(true),200);
   if(window._autoSave) window._autoSave();
 }
@@ -1432,6 +1434,35 @@ function xemChiTietBG(bgId){
     </div>
   </div>`;
   document.body.appendChild(mo);
+}
+
+function chuyenSangPXK(bgId){
+  const b=DB.baoGia.find(x=>x.id===bgId);if(!b)return;
+  const ma=genId('PXK');
+  const now=Date.now();
+  // Tạo PXK từ BG — trừ tồn kho ngay
+  DB.pxk.unshift({
+    id:ma,ma,ngay:todayStr(),khId:b.khId,
+    kdId:b.nvId||DB.nhanVien[0]?.id||'',
+    httt:b.httt||'Công Nợ',vat:b.vat??8,
+    diachi:b.diachi||'',sdt:'',
+    ghichu:'Từ BG '+b.ma+(b.ghichu?' – '+b.ghichu:''),
+    items:b.items,soSach:'Ghi Số',hoadonVAT:'Chưa Xuất',updatedAt:now
+  });
+  // Trừ tồn kho khi xuất
+  b.items.forEach(it=>{
+    const sp=DB.sanPham.find(x=>x.id===it.spId);
+    if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=now;}
+  });
+  // Đánh dấu BG đã chuyển
+  b.trangThai='Đã chuyển PXK';b.updatedAt=now;
+  toast('✅ Đã tạo '+ma+' từ báo giá '+b.ma);
+  renderBaoGiaTable();renderPXKTable();
+  if(window._autoSave) window._autoSave();
+  if(_tramBaseUrl) setTimeout(()=>_tramPushMerged(true),200);
+  // Chuyển sang tab PXK
+  const tabEl=document.querySelector('#page-ban-hang .sub-tab');
+  if(tabEl) showTab(tabEl,'bh-nkxk');
 }
 
 function xoaBG(id){
