@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kế Toán Kép – Văn Phòng Phẩm Phú Anh</title>
+<title>Quản Lý – Văn Phòng Phẩm Phú Anh</title>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--sb:#0f1e3d;--sbh:#1a2f5a;--blue:#2563eb;--blue-l:#eff6ff;--green:#16a34a;--green-l:#f0fdf4;--red:#dc2626;--red-l:#fef2f2;--orange:#ea580c;--orange-l:#fff7ed;--teal:#0891b2;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--t1:#1e293b;--t2:#64748b;--t3:#94a3b8;--sh:0 1px 3px rgba(0,0,0,.08);--r:8px;--rl:12px}
@@ -267,7 +267,7 @@ select{font-family:inherit}
   <div class="sb-logo">
     <div class="sb-icon">📦</div>
     <div class="sb-name">VĂN PHÒNG PHẨM</div>
-    <div class="sb-sub">Phú Anh SME</div>
+    <div class="sb-sub">Phú Anh – Quản Lý</div>
   </div>
   <div style="padding:8px 0">
     <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">📊</span>Tổng Quan Doanh Số</div>
@@ -275,12 +275,13 @@ select{font-family:inherit}
     <div class="nav-item" onclick="showPage('nhap-hang')"><span class="nav-icon">📥</span>Nhập Hàng Nhà CC</div>
     <div class="nav-item" onclick="showPage('so-quy')"><span class="nav-icon">💰</span>Sổ Quỹ Thu Chi</div>
     <div class="nav-item" onclick="showPage('danh-muc')"><span class="nav-icon">🗂️</span>Danh Mục (Dữ liệu)</div>
+    <div class="nav-item" onclick="showPage('bao-cao')"><span class="nav-icon">📈</span>Báo Cáo Doanh Số</div>
     <div class="nav-item" onclick="showPage('dong-bo')"><span class="nav-icon">☁️</span>Đồng Bộ Đám Mây</div>
     <div class="nav-item" id="nav-trash" onclick="showPage('thung-rac')"><span class="nav-icon">🗑️</span>Thùng Rác <span id="trash-badge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></div>
   </div>
   <div class="sb-bottom">
     <button class="sync-btn" onclick="toast('Đã đồng bộ lên đám mây!','success')">☁️ Đồng bộ Đám mây</button>
-    <div class="sb-ver">Phần mềm Kế toán v7.0<br>© Phú Anh Stationery 2026</div>
+    <div class="sb-ver">Phần mềm Kế toán v7.0 – QL<br>© Phú Anh Stationery 2026</div>
   </div>
 </aside>
 
@@ -629,7 +630,7 @@ select{font-family:inherit}
   </div>
 
   <!-- GOOGLE DRIVE BACKUP — Apps Script -->
-  <!-- Drive backup không có -->
+  <!-- Drive backup chỉ có trên máy chủ -->
 
   <!-- LOG -->
   <div class="sync-card">
@@ -677,8 +678,12 @@ select{font-family:inherit}
         <div class="fg"><label>Hình Thức Thanh Toán</label><select id="pxk-httt"><option>Tiền Mặt</option><option>Chuyển Khoản</option><option selected>Công Nợ</option></select></div>
       </div>
       <div class="form-grid fg2">
-        <div class="fg"><label>Ghi Chú Nội Bộ</label><textarea id="pxk-ghichu" placeholder="Diễn giải lý do xuất nhập…"></textarea></div>
+        <div class="fg"><label>Điện Thoại KH <small style="color:var(--t3);font-weight:400">(tự điền, có thể sửa)</small></label><input type="text" id="pxk-sdt" placeholder="Số điện thoại khách hàng…"></div>
         <div class="fg"><label>Thuế Suất VAT</label><select id="pxk-vat" onchange="calcPXK()"><option value="0">0%</option><option value="5">5%</option><option value="8" selected>8%</option><option value="10">10% (Tiêu chuẩn)</option></select></div>
+      </div>
+      <div class="form-grid fg2">
+        <div class="fg"><label>Người Nhận <small style="color:var(--t3);font-weight:400">(phòng ban / tên người nhận)</small></label><input type="text" id="pxk-nguoinhan" placeholder="VD: Phòng Hành Chính – Ms. Lan…"></div>
+        <div class="fg"><label>Ghi Chú Nội Bộ</label><input type="text" id="pxk-ghichu" placeholder="Diễn giải, ghi chú đơn hàng…"></div>
       </div>
       <div class="sec-title">☰ Chi Tiết Danh Mục Hàng Hóa</div>
       <div class="it-wrap">
@@ -1182,7 +1187,18 @@ const DB = {
 // ============ UTILS ============
 function fmt(n){return Math.round(n||0).toLocaleString('vi-VN')}
 function todayStr(){return new Date().toISOString().slice(0,10)}
-function genId(prefix){return prefix+'-'+Date.now().toString(36).toUpperCase()}
+function genId(prefix){
+  // Lấy số thứ tự cao nhất hiện có + 1, định dạng 5 chữ số: PXK-00001
+  const key='phuanh_seq_'+prefix;
+  const existing=(DB[{PXK:'pxk',PNK:'pnk',BG:'baoGia',PT:'quy',HD:'hoaDon'}[prefix]]||[])
+    .map(x=>{const m=x.ma?.match(/\d+$/);return m?parseInt(m[0]):0;})
+    .filter(n=>!isNaN(n));
+  const stored=parseInt(localStorage.getItem(key)||'0');
+  const maxExist=existing.length?Math.max(...existing):0;
+  const next=Math.max(maxExist,stored)+1;
+  localStorage.setItem(key,String(next));
+  return prefix+'-'+String(next).padStart(5,'0');
+}
 function getKH(id){return DB.khachHang.find(x=>x.id===id)||{}}
 function getNV(id){return DB.nhanVien.find(x=>x.id===id)||{}}
 function getNCC(id){return DB.nhaCungCap.find(x=>x.id===id)||{}}
@@ -1207,8 +1223,15 @@ function confirm2(title,msg,cb){
   document.getElementById('confirm-title').textContent=title;
   document.getElementById('confirm-msg').textContent=msg;
   const btn=document.getElementById('confirm-ok');
-  btn.onclick=()=>{closeMo('mo-confirm');cb()};
+  btn.onclick=()=>{closeMo('mo-confirm');cb();};
   openMo('mo-confirm');
+  // FIX 3: Enter để xác nhận, Escape để hủy
+  setTimeout(()=>btn.focus(),100);
+  const onKey=function(e){
+    if(e.key==='Enter'){e.preventDefault();btn.click();document.removeEventListener('keydown',onKey);}
+    else if(e.key==='Escape'){closeMo('mo-confirm');document.removeEventListener('keydown',onKey);}
+  };
+  document.addEventListener('keydown',onKey);
 }
 
 // ============ NAV ============
@@ -1222,6 +1245,7 @@ function showPage(id){
   if(id==='dashboard') renderDashboard();
   if(id==='ban-hang'){renderPXKTable();renderBaoGiaTable();renderCongNoTable();}
   if(id==='nhap-hang'){renderPNKTable();renderNCCCongNo();}
+  if(id==='bao-cao'){initBaoCao();}
   if(id==='so-quy'){renderQuyCards();renderQuyTable();}
   if(id==='danh-muc'){renderAllDM();}
   if(id==='dong-bo'){renderSyncPage();}
@@ -1463,7 +1487,8 @@ function acSelect(ctx, itemId){
     const prefix=ctx.replace('-kh','');
     const addrEl=document.getElementById(prefix+'-diachi');
     if(addrEl&&kh.diachi) addrEl.value=kh.diachi;
-  } else {
+    const sdtEl=document.getElementById(prefix+'-sdt');
+    if(sdtEl&&kh.sdt) sdtEl.value=kh.sdt;
     const sp=DB.sanPham.find(x=>x.id===itemId);
     if(!sp) return;
     input.value=sp.sku+' – '+sp.ten;
@@ -1487,6 +1512,8 @@ function acSetKH(ctx, khId){
   const prefix=ctx.replace('-kh','');
   const addrEl=document.getElementById(prefix+'-diachi');
   if(addrEl&&kh.diachi) addrEl.value=kh.diachi;
+  const sdtEl=document.getElementById(prefix+'-sdt');
+  if(sdtEl&&kh.sdt) sdtEl.value=kh.sdt;
 }
 
 function fillNVSelect(selId){
@@ -1497,38 +1524,49 @@ function fillNVSelect(selId){
 
 // AC for product inside item table rows (used in addItemRow)
 // Each row has its own toggle state stored on the wrap element
-function spAcSearch(inputEl, tbodyCtx){
+function spAcSearch(inputEl,ctx){
   const q=inputEl.value.trim();
   const wrap=inputEl.closest('.ac-sp-wrap');
   if(!wrap) return;
   let drop=wrap.querySelector('.sp-drop-wrap');
   if(!drop){
-    drop=document.createElement('div');
-    drop.className='sp-drop-wrap';
-    drop.innerHTML=`
-      <div class="sp-drop-header">
-        <span>Mã hàng</span><span>Tên hàng</span>
-        <span class="th-r">Tồn kho</span><span class="th-r">Giá bán</span>
-      </div>
-      <div class="sp-drop-list" id="sp-list-${Date.now()}"></div>
-      <div class="sp-drop-footer">
-        <div class="sp-drop-footer-left">
-          <label class="sp-drop-toggle" onclick="spToggleTon(this)">
-            <div class="sp-toggle-sw" data-on="0"></div>
-            <span>Chỉ hiện hàng còn tồn</span>
-          </label>
-        </div>
-        <span class="sp-drop-count"></span>
-      </div>`;
+    drop=document.createElement('div');drop.className='sp-drop-wrap';
+    drop.innerHTML=`<div class="sp-drop-header"><span>Mã hàng</span><span>Tên hàng</span><span class="th-r">Tồn</span><span class="th-r">Giá bán</span></div><div class="sp-drop-list"></div><div class="sp-drop-footer"><label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;color:var(--t2)"><div class="sp-toggle-sw" data-on="0" onclick="spToggleTon(this.closest('label'))"></div>Chỉ còn tồn</label><span class="sp-drop-count"></span></div>`;
     wrap.appendChild(drop);
-    // click outside closes
-    document.addEventListener('mousedown', function closeHandler(e){
-      if(!wrap.contains(e.target)){drop.classList.remove('open');}
+    document.addEventListener('mousedown',function h(e){if(!wrap.contains(e.target)){drop.classList.remove('open');drop.dataset.sel='-1';}});
+
+    // FIX 2: Phím bàn phím điều hướng dropdown
+    inputEl.addEventListener('keydown',function(e){
+      const rows=drop.querySelectorAll('.sp-drop-row');
+      let sel=parseInt(drop.dataset.sel??'-1');
+      if(e.key==='ArrowDown'){
+        e.preventDefault();
+        sel=Math.min(sel+1,rows.length-1);
+        drop.dataset.sel=sel;
+        rows.forEach((r,i)=>r.classList.toggle('sp-drop-row-active',i===sel));
+        if(rows[sel]) rows[sel].scrollIntoView({block:'nearest'});
+      } else if(e.key==='ArrowUp'){
+        e.preventDefault();
+        sel=Math.max(sel-1,0);
+        drop.dataset.sel=sel;
+        rows.forEach((r,i)=>r.classList.toggle('sp-drop-row-active',i===sel));
+        if(rows[sel]) rows[sel].scrollIntoView({block:'nearest'});
+      } else if(e.key==='Enter'){
+        e.preventDefault();
+        if(sel>=0&&rows[sel]){rows[sel].dispatchEvent(new MouseEvent('mousedown'));drop.dataset.sel='-1';}
+        else if(rows.length===1){rows[0].dispatchEvent(new MouseEvent('mousedown'));}
+      } else if(e.key==='Escape'){
+        drop.classList.remove('open');drop.dataset.sel='-1';
+      } else if(e.key==='Tab'){
+        if(sel>=0&&rows[sel]){e.preventDefault();rows[sel].dispatchEvent(new MouseEvent('mousedown'));drop.dataset.sel='-1';}
+      }
     });
+    drop.dataset.sel='-1';
   }
   const onlyTon=drop.querySelector('.sp-toggle-sw')?.dataset.on==='1';
-  spRenderDropList(drop, q, tbodyCtx, onlyTon);
+  spRenderDropList(drop,q,ctx,onlyTon);
   drop.classList.add('open');
+  drop.dataset.sel='-1';
 }
 
 function spRenderDropList(drop, q, tbodyCtx, onlyTon){
@@ -1609,7 +1647,9 @@ function openModalPXK(pxkId=null){
   document.getElementById('pxk-ngay').value=todayStr();
   document.getElementById('pxk-items').innerHTML='';
   document.getElementById('pxk-ghichu').value='';
+  document.getElementById('pxk-nguoinhan').value='';
   document.getElementById('pxk-diachi').value='';
+  document.getElementById('pxk-sdt').value='';
   document.getElementById('pxk-kh-input').value='';
   document.getElementById('pxk-kh').value='';
 
@@ -1622,6 +1662,8 @@ function openModalPXK(pxkId=null){
     document.getElementById('pxk-httt').value=p.httt;
     document.getElementById('pxk-vat').value=p.vat;
     document.getElementById('pxk-diachi').value=p.diachi||'';
+    document.getElementById('pxk-nguoinhan').value=p.nguoiNhan||'';
+    document.getElementById('pxk-sdt').value=p.sdt||(getKH(p.khId).sdt||'');
     document.getElementById('pxk-ghichu').value=p.ghichu||'';
     p.items.forEach(it=>addItemRow('pxk',it));
   } else {
@@ -1642,23 +1684,34 @@ function savePXK(){
   const ctx=DB._editCtx;
   if(ctx&&ctx.id){
     const p=DB.pxk.find(x=>x.id===ctx.id);
+    // Chỉ hoàn tồn cũ nếu phiếu ĐANG là Ghi Sổ
+    // (Nháp = đã hoàn tồn khi bỏ GS rồi, không hoàn lại)
+    if(p.soSach==='Ghi Số'){
+      (p.items||[]).forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=(sp.ton||0)+it.sl;sp.updatedAt=Date.now();}});
+    }
     p.khId=khId; p.ngay=ngay;
     p.kdId=document.getElementById('pxk-kd').value;
     p.httt=document.getElementById('pxk-httt').value;
     p.vat=vatPct;
     p.diachi=document.getElementById('pxk-diachi').value;
+    p.nguoiNhan=(document.getElementById('pxk-nguoinhan')?.value||'');
     p.ghichu=document.getElementById('pxk-ghichu').value;
     p.items=items;
     p.soSach='Ghi Số';
-    p.updatedAt=Date.now(); // timestamp để merge
+    p.updatedAt=Date.now();
+    // Trừ tồn kho mới
+    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
     toast('Đã cập nhật & ghi sổ phiếu xuất kho!');
   } else {
-    const ma='PXK-'+String(Date.now()).slice(-6);
+    const ma=genId('PXK');
     DB.pxk.unshift({id:ma,ma,ngay,khId,kdId:document.getElementById('pxk-kd').value,
       httt:document.getElementById('pxk-httt').value,vat:vatPct,
       diachi:document.getElementById('pxk-diachi').value,
+      nguoiNhan:(document.getElementById('pxk-nguoinhan')?.value||''),
       ghichu:document.getElementById('pxk-ghichu').value,
       items,soSach:'Ghi Số',hoadonVAT:'Chưa Xuất',updatedAt:Date.now()});
+    // Trừ tồn kho khi xuất
+    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
     toast('Đã lập & ghi sổ phiếu xuất kho: '+ma);
   }
   closeMo('mo-pxk');
@@ -1671,28 +1724,37 @@ function ghiSoPXK(id){
   const p=DB.pxk.find(x=>x.id===id);
   if(!p) return;
   if(p.soSach==='Ghi Số'){toast('Phiếu đã được ghi sổ rồi!','info');return;}
+  // Trừ tồn kho khi ghi sổ
+  (p.items||[]).forEach(it=>{
+    const sp=DB.sanPham.find(x=>x.id===it.spId);
+    if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}
+  });
   p.soSach='Ghi Số';
-  // update cong no
-  const kh=DB.khachHang.find(x=>x.id===p.khId);
-  if(kh && p.httt!=='Tiền Mặt'){
-    const {total}=calcPXKTotals(p.items,p.vat);
-    kh.duNo=(kh.duNo||0)+total;
-  }
-  toast('Đã ghi sổ phiếu '+id);
+  p.updatedAt=Date.now();
+  if(window._autoSave) window._autoSave();
+  if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),300);
+  toast('✅ Đã ghi sổ phiếu '+id+' – tồn kho đã trừ');
   renderPXKTable();
+  renderDMSanPham();
 }
 
 function xoaPXK(id){
   const p=DB.pxk.find(x=>x.id===id);
   if(p&&isPXKLocked(p)){toast('Phiếu đã bị khóa bởi hóa đơn đã ký – không thể xóa!','error');return;}
+  if(p&&p.soSach==='Ghi Số'){toast('Vui lòng nhấn "Bỏ Ghi Sổ" trước khi xóa phiếu!','error');return;}
   confirm2('Chuyển vào Thùng Rác','Phiếu '+id+' sẽ vào thùng rác. Có thể khôi phục trong 30 ngày.',()=>{
     trashMove('pxk',id);
-    // Soft-delete: đánh dấu _deleted+updatedAt thay vì .filter() để server biết
+    // Hoàn lại tồn kho (phiếu đang Nháp = tồn đã được hoàn khi bỏ GS, không hoàn thêm)
+    // Chỉ hoàn nếu phiếu chưa từng ghi sổ (soSach là Nháp từ đầu)
+    const pDel=DB.pxk.find(x=>x.id===id);
+    if(pDel&&pDel.soSach==='Nháp'&&!pDel._hadGhiSo){
+      // Phiếu Nháp chưa từng GS → tồn chưa bị trừ → không cần hoàn
+    }
+    // Soft-delete
     const idx=DB.pxk.findIndex(x=>x.id===id);
     if(idx>=0) DB.pxk[idx]={...DB.pxk[idx],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển '+id+' vào thùng rác');
     if(window._autoSave) window._autoSave();
-    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
     if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),400);
     renderPXKTable();
   });
@@ -1706,11 +1768,20 @@ function isPXKLocked(p){
 function unghiSoPXK(id){
   const p=DB.pxk.find(x=>x.id===id);
   if(!p) return;
-  if(isPXKLocked(p)){toast('Phiếu này đã thuộc hóa đơn đã ký – không thể bỏ ghi sổ!','error');return;}
-  confirm2('Bỏ Ghi Sổ','Bỏ ghi sổ phiếu '+id+'? Phiếu sẽ trở về trạng thái Nháp và có thể sửa.',()=>{
+  if(isPXKLocked(p)){toast('Phiếu đã bị khóa bởi HĐ đã ký!','error');return;}
+  confirm2('Bỏ Ghi Sổ','Bỏ ghi sổ phiếu '+id+'? Tồn kho sẽ được hoàn lại.',()=>{
+    // Hoàn lại tồn kho khi bỏ ghi sổ
+    (p.items||[]).forEach(it=>{
+      const sp=DB.sanPham.find(x=>x.id===it.spId);
+      if(sp){sp.ton=(sp.ton||0)+it.sl;sp.updatedAt=Date.now();}
+    });
     p.soSach='Nháp';
-    toast('Đã bỏ ghi sổ phiếu '+id+'. Bạn có thể sửa lại.');
+    p.updatedAt=Date.now();
+    if(window._autoSave) window._autoSave();
+    if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),300);
+    toast('↩ Đã bỏ ghi sổ – tồn kho đã hoàn lại');
     renderPXKTable();
+    renderDMSanPham();
   });
 }
 
@@ -1718,7 +1789,7 @@ function renderPXKTable(){
   const q=(document.getElementById('pxk-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('pxk-tbody');
   if(!tbody) return;
-  const list=DB.pxk.filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q)||(getKH(p.khId).ten||'').toLowerCase().includes(q)));
+  const list=DB.pxk.filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q)||(getKH(p.khId).ten||'').toLowerCase().includes(q))).sort((a,b)=>b.ngay.localeCompare(a.ngay)||(b.updatedAt||0)-(a.updatedAt||0));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu xuất kho nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(p=>{
     const kh=getKH(p.khId);
@@ -1740,7 +1811,7 @@ function renderPXKTable(){
       <td><input type="checkbox" class="pxk-chk" data-id="${p.id}" ${locked?'disabled':''}></td>
       <td>${p.ngay}</td>
       <td><span class="lnk" onclick="xemPhieuPXK('${p.id}')">${lockIcon}${p.ma}</span></td>
-      <td>${kh.ten||p.khId}</td>
+      <td>${kh.ten||p.khId}${p.nguoiNhan?`<br><span style="font-size:11px;color:var(--t3);font-style:italic">✏️ ${p.nguoiNhan}</span>`:''}</td>
       <td class="tr money m-blue">${fmt(total)} ₫</td>
       <td><span class="bdg ${ssBdg}">${p.soSach}</span></td>
       <td><span class="bdg bdg-gray" style="font-size:10.5px">${p.hoadonVAT}</span></td>
@@ -1795,7 +1866,7 @@ function saveBaoGia(){
     Object.assign(b,{khId,ngay,nvId:document.getElementById('bg-nv').value,hieuluc:document.getElementById('bg-hieuluc').value,ghichu:document.getElementById('bg-ghichu').value,items,tongTien:sub});
     toast('Đã cập nhật báo giá!');
   } else {
-    const ma='BG-'+String(Date.now()).slice(-6);
+    const ma=genId('BG');
     DB.baoGia.unshift({id:ma,ma,ngay,khId,nvId:document.getElementById('bg-nv').value,hieuluc:document.getElementById('bg-hieuluc').value,ghichu:document.getElementById('bg-ghichu').value,items,tongTien:sub,trangThai:'Đang duyệt'});
     toast('Đã tạo báo giá: '+ma);
   }
@@ -1819,7 +1890,7 @@ function renderBaoGiaTable(){
   const q=(document.getElementById('bg-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('bg-tbody');
   if(!tbody) return;
-  const list=DB.baoGia.filter(b=>!b._deleted&&(!q||b.ma.toLowerCase().includes(q)||(getKH(b.khId).ten||'').toLowerCase().includes(q)));
+  const list=DB.baoGia.filter(b=>!b._deleted&&(!q||b.ma.toLowerCase().includes(q)||(getKH(b.khId).ten||'').toLowerCase().includes(q))).sort((a,b)=>b.ngay.localeCompare(a.ngay)||(b.updatedAt||0)-(a.updatedAt||0));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-ico">📋</div><p>Chưa có báo giá nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(b=>{
     const kh=getKH(b.khId);
@@ -1846,7 +1917,7 @@ function renderBaoGiaTable(){
 function chuyenSangPXK(bgId){
   const b=DB.baoGia.find(x=>x.id===bgId);
   if(!b) return;
-  const ma='PXK-'+String(Date.now()).slice(-6);
+  const ma=genId('PXK');
   DB.pxk.unshift({id:ma,ma,ngay:todayStr(),khId:b.khId,kdId:b.nvId||DB.nhanVien[0]?.id,httt:'Công Nợ',vat:8,diachi:'',ghichu:'Tạo từ báo giá '+b.ma,items:b.items,soSach:'Nháp',hoadonVAT:'Chưa Xuất'});
   b.trangThai='Đã chuyển PXK';
   toast('Đã tạo PXK từ báo giá: '+ma);
@@ -1961,7 +2032,7 @@ function cnThuSelected(){
   const kh=getKH(khId);
   const httt=document.getElementById('cn-thu-httt').value;
   const ngay=document.getElementById('cn-thu-ngay').value;
-  const ma='PT-'+String(Date.now()).slice(-6);
+  const ma=genId('PT');
   // Ghi phiếu thu
   DB.quy.push({id:ma,ma,loai:'thu',ngay,dien:'Thu nợ – '+kh.ten+' ('+pxkMas.join(', ')+')',sotien:total,httt,dt:kh.ten,khId});
   // Cập nhật HTTT của các PXK được chọn
@@ -2000,7 +2071,7 @@ function saveThuNo(){
   const kh=getKH(khId);
   const httt=document.getElementById('thuno-httt').value;
   const ngay=document.getElementById('thuno-ngay').value;
-  const ma='PT-'+String(Date.now()).slice(-6);
+  const ma=genId('PT');
   DB.quy.push({id:ma,ma,loai:'thu',ngay,
     dien:'Thu tiền công nợ – '+kh.ten,sotien:st,httt,dt:kh.ten,khId});
 
@@ -2067,7 +2138,7 @@ function saveThuGop(){
   if(!tot){toast('Vui lòng chọn ít nhất 1 đơn hàng!','error');return;}
   const khId=document.getElementById('tg-kh').value;
   const kh=getKH(khId);
-  const ma='PT-'+String(Date.now()).slice(-6);
+  const ma=genId('PT');
   DB.quy.push({id:ma,ma,loai:'thu',ngay:document.getElementById('tg-ngay').value,
     dien:'Thu gộp công nợ – '+kh.ten,sotien:tot,
     httt:document.getElementById('tg-httt').value,dt:kh.ten,khId});
@@ -2161,7 +2232,7 @@ function taoBangKeVAT(){
     pxkIds.push(p.id);
   });
   const kh=getKH(khId);
-  const ma='HD-'+String(Date.now()).slice(-6);
+  const ma=genId('HD');
   // trangThai = Nháp khi mới tạo
   DB.hoaDon.unshift({id:ma,ma,ngay:todayStr(),khId,tongTien,pxkList,pxkIds,soHD:ma,trangThai:'Nháp',kyBoi:null,kyNgay:null});
   checked.forEach(c=>{
@@ -2190,7 +2261,8 @@ function renderHoaDon(){
   if(!DB.hoaDon.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">🧾</div><p>Chưa có hóa đơn nào. Vào tab "Gom Bảng Kê VAT" để tạo.</p></div></td></tr>`;return;}
   const activeHD=DB.hoaDon.filter(h=>!h._deleted);
   if(!activeHD.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">🧾</div><p>Chưa có hóa đơn nào.</p></div></td></tr>`;return;}
-  tbody.innerHTML=activeHD.map(h=>{
+  const sortedHD=activeHD.sort((a,b)=>b.ngay?.localeCompare(a.ngay||'')||(b.updatedAt||0)-(a.updatedAt||0));
+  tbody.innerHTML=sortedHD.map(h=>{
     const kh=getKH(h.khId);
     const signed=h.trangThai==='Đã Ký';
     const bdgClass=signed?'bdg-signed':'bdg-draft';
@@ -2463,14 +2535,18 @@ function savePNK(){
   if(ctx&&ctx.id){
     const p=DB.pnk.find(x=>x.id===ctx.id);
     if(p){
-      // hoàn lại tồn kho cũ trước khi cập nhật
-      p.items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp)sp.ton-=it.sl;});
+      // Chỉ hoàn tồn cũ nếu phiếu đang là Ghi Số
+      // (Nháp = đã trừ tồn khi bỏ GS rồi, không trừ thêm)
+      if(p.soSach==='Ghi Số'){
+        p.items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
+      }
       Object.assign(p,{nccId,ngay,httt,ghichu,vat:vatPct,items,tongTien:tot,soSach:'Ghi Số',updatedAt:Date.now()});
-      items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp)sp.ton+=it.sl;});
+      // Cộng tồn kho mới
+      items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=(sp.ton||0)+it.sl;sp.updatedAt=Date.now();}});
     }
     toast('✅ Đã cập nhật & ghi sổ phiếu nhập kho!');
   } else {
-    const ma='PNK-'+String(Date.now()).slice(-6);
+    const ma=genId('PNK');
     DB.pnk.unshift({id:ma,ma,ngay,nccId,httt,ghichu,vat:vatPct,items,tongTien:tot,soSach:'Ghi Số',updatedAt:Date.now()});
     // Cập nhật tồn kho
     items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton+=it.sl;sp.updatedAt=Date.now();}});
@@ -2485,15 +2561,19 @@ function savePNK(){
 
 function xoaPNK(id){
   const p=DB.pnk.find(x=>x.id===id);
-  if(p&&p.soSach==='Ghi Số'){toast('Phiếu đã ghi sổ – nhấn "Bỏ Ghi Sổ" trước!','error');return;}
+  if(p&&p.soSach==='Ghi Số'){toast('Phiếu đã ghi sổ – nhấn "Bỏ Ghi Sổ" trước khi xóa!','error');return;}
   confirm2('Chuyển vào Thùng Rác','Phiếu '+id+' sẽ vào thùng rác.',()=>{
     trashMove('pnk',id);
+    // Hoàn lại tồn kho khi xóa phiếu Nháp (vừa bỏ GS rồi xóa)
+    if(p&&p.items) p.items.forEach(it=>{
+      const sp=DB.sanPham.find(x=>x.id===it.spId);
+      if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}
+    });
     const idx=DB.pnk.findIndex(x=>x.id===id);
     if(idx>=0) DB.pnk[idx]={...DB.pnk[idx],_deleted:true,updatedAt:Date.now()};
     toast('🗑️ Đã chuyển '+id+' vào thùng rác');
     if(window._autoSave) window._autoSave();
-    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
-    renderPNKTable();
+    renderPNKTable();renderDMSanPham();
   });
 }
 
@@ -2508,19 +2588,32 @@ function getNCCDuNo(nccId){
 function ghiSoPNK(id){
   const p=DB.pnk.find(x=>x.id===id);
   if(!p||p.soSach==='Ghi Số'){toast('Phiếu đã ghi sổ rồi!','info');return;}
+  // Cộng lại tồn kho khi ghi sổ (vì bỏ GS đã trừ tồn trước đó)
+  (p.items||[]).forEach(it=>{
+    const sp=DB.sanPham.find(x=>x.id===it.spId);
+    if(sp){sp.ton=(sp.ton||0)+it.sl;sp.updatedAt=Date.now();}
+  });
   p.soSach='Ghi Số';
-  toast('Đã ghi sổ phiếu '+id);
-  renderPNKTable();
-  renderNCCCongNo();
+  p.updatedAt=Date.now();
+  if(window._autoSave) window._autoSave();
+  toast('✅ Đã ghi sổ phiếu '+id+' – tồn kho đã cộng');
+  renderPNKTable();renderDMSanPham();renderNCCCongNo();
 }
 
 function unghiSoPNK(id){
   const p=DB.pnk.find(x=>x.id===id);
   if(!p) return;
-  confirm2('Bỏ Ghi Sổ PNK','Bỏ ghi sổ phiếu '+id+'? Phiếu về trạng thái Nháp và có thể sửa.',()=>{
+  confirm2('Bỏ Ghi Sổ PNK','Bỏ ghi sổ phiếu '+id+'? Tồn kho sẽ được trừ lại.',()=>{
+    // Trừ lại tồn kho khi bỏ ghi sổ PNK
+    (p.items||[]).forEach(it=>{
+      const sp=DB.sanPham.find(x=>x.id===it.spId);
+      if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}
+    });
     p.soSach='Nháp';
-    toast('Đã bỏ ghi sổ phiếu '+id);
-    renderPNKTable();
+    p.updatedAt=Date.now();
+    if(window._autoSave) window._autoSave();
+    toast('↩ Đã bỏ ghi sổ '+id+' – tồn kho đã trừ lại');
+    renderPNKTable();renderDMSanPham();
   });
 }
 
@@ -2528,7 +2621,7 @@ function renderPNKTable(){
   const q=(document.getElementById('pnk-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('pnk-tbody');
   if(!tbody) return;
-  const list=DB.pnk.filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q)));
+  const list=DB.pnk.filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q))).sort((a,b)=>b.ngay.localeCompare(a.ngay)||(b.updatedAt||0)-(a.updatedAt||0));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu nhập kho nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(p=>{
     const ncc=getNCC(p.nccId);
@@ -2635,7 +2728,7 @@ function nccThanhToanSelected(){
   const ncc=getNCC(nccId);
   const httt=document.getElementById('ncc-tt-httt').value;
   const ngay=document.getElementById('ncc-tt-ngay').value;
-  const ma='PC-'+String(Date.now()).slice(-6);
+  const ma=genId('PC');
   DB.quy.push({id:ma,ma,loai:'chi',ngay,dien:'Thanh toán NCC – '+ncc.ten+' ('+pnkMas.join(', ')+')',sotien:total,httt,dt:ncc.ten,nccId});
   // Update HTTT of paid PNKs
   pnkIds.forEach(pid=>{const p=DB.pnk.find(x=>x.id===pid);if(p)p.httt=httt;});
@@ -2653,8 +2746,8 @@ function openThanhToanNCC(nccId){
 }
 
 // ============ SO QUY ============
-function getTongThu(){let t=0;DB.quy.filter(q=>q.loai==='thu').forEach(q=>t+=q.sotien);return t;}
-function getTongChi(){let t=0;DB.quy.filter(q=>q.loai==='chi').forEach(q=>t+=q.sotien);return t;}
+function getTongThu(){let t=0;DB.quy.filter(q=>!q._deleted&&q.loai==='thu').forEach(q=>t+=q.sotien);return t;}
+function getTongChi(){let t=0;DB.quy.filter(q=>!q._deleted&&q.loai==='chi').forEach(q=>t+=q.sotien);return t;}
 function getTonQuy(){return 158261308.9+getTongThu()-getTongChi();}
 
 function renderQuyCards(){
@@ -2694,8 +2787,12 @@ function savePhieuQuy(){
 
 function xoaQuy(id){
   confirm2('Xóa Phiếu','Bạn chắc chắn muốn xóa phiếu này?',()=>{
-    DB.quy=DB.quy.filter(x=>x.id!==id);
+    // Soft-delete để server/Drive biết đã xóa
+    const idx=DB.quy.findIndex(x=>x.id===id);
+    if(idx>=0) DB.quy[idx]={...DB.quy[idx],_deleted:true,updatedAt:Date.now()};
     toast('Đã xóa phiếu');
+    if(window._autoSave) window._autoSave();
+    if(typeof gdPush==='function'&&gdGetCfg().scriptUrl) setTimeout(()=>gdPush(true),300);
     renderQuyCards();
     renderQuyTable();
   });
@@ -2705,7 +2802,7 @@ function renderQuyTable(){
   const q=(document.getElementById('quy-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('quy-tbody');
   if(!tbody) return;
-  const list=DB.quy.filter(x=>!q||x.ma.toLowerCase().includes(q)||x.dien.toLowerCase().includes(q));
+  const list=DB.quy.filter(x=>!x._deleted&&(!q||x.ma.toLowerCase().includes(q)||x.dien.toLowerCase().includes(q)));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-ico">💰</div><p>Chưa có phiếu nào</p></div></td></tr>`;return;}
   let running=158261308.9;
   tbody.innerHTML=list.map(x=>{
@@ -2909,9 +3006,9 @@ function renderAllDM(){
 // ============================================================
 const CO_SO_IN={
   ten:'CÔNG TY TNHH VĂN PHÒNG PHẨM PHÚ ANH',
-  cs:'Cs1 : Kiến Hưng, Hà Đông - Cs2 : Khương Đình, Thanh Xuân',
-  tel:'Tel: 0963042320',
-  mst:'MST: 0111029621',
+  cs:'Cs1: Kiến Hưng, Hà Đông - Cs2: Khương Đình, Thanh Xuân',
+  tel:'Tel: 0963042320 - 0936029426',
+  email:'Email: vanphongphamphuanh@gmail.com',
 };
 
 function _buildPrintHTML(bodyHTML){
@@ -2953,19 +3050,14 @@ function _buildPrintHTML(bodyHTML){
     +'</body></html>';
 }
 
-function _printCo(noCT,coCT){
-  return '<div class="ph">'
-    +'<div class="ph-co">'
+function _printCo(no,co){
+  // Góc phải (Nợ/Có/Loại tiền) đã bỏ theo yêu cầu
+  return '<div class="ph"><div class="ph-co">'
     +'<div class="ph-co-name">'+CO_SO_IN.ten+'</div>'
     +'<div class="ph-co-sub">'+CO_SO_IN.cs+'</div>'
     +'<div class="ph-co-sub">'+CO_SO_IN.tel+'</div>'
-    +'</div>'
-    +(noCT?'<div class="ph-so">'
-      +'<div><b>Nợ:</b> '+noCT+'</div>'
-      +'<div><b>Có:</b> '+(coCT||'5111')+'</div>'
-      +'<div><b>Loại tiền:</b> VND</div>'
-      +'</div>':'')
-    +'</div>';
+    +'<div class="ph-co-sub">'+CO_SO_IN.email+'</div>'
+    +'</div></div>';
 }
 
 function _printTitle(ten,ngay,so){
@@ -2977,12 +3069,24 @@ function _printTitle(ten,ngay,so){
     +'</div>';
 }
 
-function _printSign(ngay,lbl1,lbl2,note2){
+function _printSign(ngay,l1,l2,n2){
   const d=new Date(ngay||todayStr());
-  return '<div class="psign-date">Ngày '+d.getDate()+' tháng '+(d.getMonth()+1)+' năm '+d.getFullYear()+'</div>'
-    +'<div class="psign">'
-    +'<div><div class="psign-role">'+lbl1+'</div><div class="psign-note">(Ký, họ tên)</div><div class="psign-space"></div></div>'
-    +'<div><div class="psign-role">'+lbl2+'</div><div class="psign-note">'+(note2||'(Ký, họ tên, đóng dấu)')+'</div><div class="psign-space"></div></div>'
+  const dateStr='Ngày '+d.getDate()+' tháng '+(d.getMonth()+1)+' năm '+d.getFullYear();
+  return '<div class="psign">'
+    // CỘT TRÁI: Người bán hàng
+    +'<div style="text-align:center">'
+    +'<div class="psign-role">'+l2+'</div>'
+    +'<div class="psign-note">'+(n2||'(Ký, họ tên, đóng dấu)')+'</div>'
+    +'<div class="psign-space"></div>'
+    +'</div>'
+    // CỘT PHẢI: Ngày + Người mua hàng
+    +'<div style="text-align:center">'
+    +'<div style="font-size:12.5px;margin-bottom:6px">'+dateStr+'</div>'
+    +'<div class="psign-role">'+l1+'</div>'
+    +'<div class="psign-note" style="font-style:italic">(Thanh toán tiền mặt hay chuyển khoản)</div>'
+    +'<div class="psign-note">(Ký, họ tên)</div>'
+    +'<div class="psign-space"></div>'
+    +'</div>'
     +'</div>';
 }
 
@@ -3022,6 +3126,7 @@ function xemPhieuPXK(id){
     +'<div class="pbuyer"><span class="pbuyer-lbl">Tên khách hàng:</span>'+kh.ten+'</div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">Địa chỉ:</span>'+(p.diachi||kh.diachi||'—')+'</div>'
     +'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+(kh.sdt||'—')+'</div>'
+    +(p.nguoiNhan?'<div class="pbuyer"><span class="pbuyer-lbl">Người nhận:</span>'+p.nguoiNhan+'</div>':'')
     +'<div class="pbuyer"><span class="pbuyer-lbl">Hình thức TT:</span>'+p.httt+'</div>'
     +(p.ghichu?'<div class="pbuyer"><span class="pbuyer-lbl">Ghi chú:</span>'+p.ghichu+'</div>':'')
     +'<table class="ptbl"><thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th>'+ckTh+'<th>Thành tiền</th></tr></thead>'
@@ -3060,29 +3165,75 @@ function soThanhChu(so){
 
 function inBaoGia(bgId){
   const b=DB.baoGia.find(x=>x.id===bgId);if(!b)return;
-  const kh=getKH(b.khId),nv=getNV(b.nvId);
-  let sub=0;
+  const kh=getKH(b.khId),nv=getNV(b.nvId||'');
+  const vatPct=Number(b.vat??0);
+
+  // Tính trước hasCK để quyết định hiện/ẩn cột CK
+  let sub=0,tongGoc=0,tongCK=0;
+  b.items.forEach(it=>{
+    const goc=it.sl*it.donGia;
+    tongGoc+=goc; tongCK+=goc*(it.ck||0)/100;
+  });
+  const hasCK=tongCK>0;
+  // Reset để tính lại trong rows
+  sub=0; tongGoc=0; tongCK=0;
+
   const rows=b.items.map((it,i)=>{
-    const tt=it.sl*it.donGia*(1-(it.ck||0)/100);sub+=tt;
-    return '<tr><td class="tc">'+(i+1)+'</td><td>'+it.spId+'</td><td>'+it.ten+'</td>'
-      +'<td class="tc">'+it.don+'</td><td class="tr">'+it.sl+'</td>'
-      +'<td class="tr">'+fmt(it.donGia)+'</td><td class="tr">'+(it.ck?it.ck+'%':'—')+'</td>'
-      +'<td class="tr">'+fmt(tt)+'</td></tr>';
+    const goc=it.sl*it.donGia;
+    const ck=goc*(it.ck||0)/100;
+    const tt=goc-ck;
+    sub+=tt; tongGoc+=goc; tongCK+=ck;
+    return '<tr>'
+      +'<td class="tc" style="width:36px">'+(i+1)+'</td>'
+      +'<td style="width:100px">'+it.spId+'</td>'
+      +'<td>'+it.ten+'</td>'
+      +'<td class="tc" style="width:48px">'+it.don+'</td>'
+      +'<td class="tr" style="width:60px">'+it.sl+'</td>'
+      +'<td class="tr" style="width:90px">'+fmt(it.donGia)+'</td>'
+      +(hasCK?'<td class="tc" style="width:55px">'+(it.ck?it.ck+'%':'—')+'</td>':'')
+      +'<td class="tr" style="width:95px">'+fmt(tt)+'</td>'
+      +'</tr>';
   }).join('');
-  const ngayHL=new Date(b.ngay||todayStr());ngayHL.setDate(ngayHL.getDate()+(b.hieuluc||30));
+
+  const tax=sub*vatPct/100;
+  const total=sub+tax;
+
+  const ngayHL=new Date(b.ngay||todayStr());
+  ngayHL.setDate(ngayHL.getDate()+(parseInt(b.hieuluc)||30));
+  const ngayHLStr=ngayHL.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'});
+
   const body=_printCo('','')
     +_printTitle('Báo Giá Hàng Hóa',b.ngay,b.ma)
-    +'<div class="pbuyer"><b>Kính gửi:</b> '+kh.ten+'</div>'
-    +'<div class="pbuyer"><span class="pbuyer-lbl">Địa chỉ:</span>'+(kh.diachi||'—')+'</div>'
-    +'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+kh.sdt+'</div>'
-    +'<div class="pbuyer"><span class="pbuyer-lbl">Nhân viên:</span>'+nv.ten+' – '+nv.sdt+'</div>'
+    +'<div class="pbuyer" style="margin-top:8px"><b>Kính gửi:</b> '+kh.ten+'</div>'
+    +(b.diachi||kh.diachi?'<div class="pbuyer"><span class="pbuyer-lbl">Địa chỉ:</span>'+(b.diachi||kh.diachi)+'</div>':'')
+    +(kh.sdt?'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+kh.sdt+'</div>':'')
+    +(nv.ten?'<div class="pbuyer"><span class="pbuyer-lbl">Nhân viên:</span>'+nv.ten+(nv.sdt?' – '+nv.sdt:'')+'</div>':'')
     +(b.ghichu?'<div class="pbuyer"><span class="pbuyer-lbl">Ghi chú:</span>'+b.ghichu+'</div>':'')
-    +'<table class="ptbl"><thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>ĐVT</th><th>Số lượng</th><th>Đơn giá</th><th>CK%</th><th>Thành tiền</th></tr></thead>'
-    +'<tbody>'+rows+'</tbody></table>'
-    +'<table class="ptot-tbl"><tr><td class="ptot-lbl">Tổng tiền hàng (chưa VAT)</td><td class="ptot-amt">'+fmt(sub)+'</td></tr></table>'
-    +'<div class="pchu"><span>Báo giá chưa bao gồm VAT.</span> Hiệu lực đến: <b>'+ngayHL.toISOString().slice(0,10)+'</b></div>'
+    +'<table class="ptbl" style="table-layout:fixed;width:100%"><colgroup>'
+    +'<col style="width:36px"><col style="width:100px"><col><col style="width:48px">'
+    +'<col style="width:60px"><col style="width:90px">'
+    +(hasCK?'<col style="width:55px">':'')
+    +'<col style="width:95px">'
+    +'</colgroup><thead><tr>'
+    +'<th class="tc">STT</th><th>Mã hàng</th><th>Tên hàng</th>'
+    +'<th class="tc">ĐVT</th><th class="tc">Số lượng</th>'
+    +'<th class="tr">Đơn giá</th>'
+    +(hasCK?'<th class="tc">CK%</th>':'')
+    +'<th class="tr">Thành tiền</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<table class="ptot-tbl">'
+    +'<tr><td class="ptot-lbl">Cộng tiền hàng (Đã trừ CK)</td><td class="ptot-amt">'+fmt(sub)+'</td></tr>'
+    +(hasCK?'<tr><td class="ptot-lbl">Tỷ lệ CK: '+(tongGoc>0?(tongCK/tongGoc*100).toFixed(2):0)+'%</td><td class="ptot-amt">Số tiền CK: '+fmt(tongCK)+'</td></tr>':'')
+    +(vatPct>0?'<tr><td class="ptot-lbl">Thuế suất GTGT: '+vatPct+'%</td><td class="ptot-amt">Tiền thuế GTGT: '+fmt(tax)+'</td></tr>':'')
+    +'<tr class="ptot-final"><td class="ptot-lbl">Tổng tiền thanh toán</td><td class="ptot-amt">'+fmt(total)+'</td></tr>'
+    +'</table>'
+    +'<div class="pchu"><span>Số tiền bằng chữ:</span> '+soThanhChu(Math.round(total))+'./.</div>'
+    +'<div class="pchu">Báo giá hiệu lực đến: <b>'+ngayHLStr+'</b></div>'
     +_printSign(b.ngay,'Khách hàng','Người báo giá','(Ký, ghi rõ họ tên)');
-  _printWindow(body);
+
+  const w=window.open('','_blank','width=920,height=720');
+  if(!w){toast('Cho phép popup để in!','error');return;}
+  w.document.write(_buildPrintHTML(body));w.document.close();
 }
 
 function inPNK(pnkId){
@@ -3817,7 +3968,7 @@ function applyRemoteData(remote){
 function syncLog(){}
 function updateSyncStatus(){}
 function gdGetCfg(){return {};}
-function gdSaveCfg(e){return {};}
+function gdSaveCfg(e){}
 function gdConnect(){toast('Chức năng chỉ có trên máy chủ chính','error');}
 function gdPush(s){if(!s)toast('Chức năng chỉ có trên máy chủ chính','error');}
 function gdPull(s){if(!s)toast('Chức năng chỉ có trên máy chủ chính','error');}
@@ -3825,6 +3976,170 @@ function gdExportJSON(){toast('Chức năng chỉ có trên máy chủ chính','
 function gdImportJSON(){}
 function gdDoImport(){}
 
+
+// ============================================================
+// BÁO CÁO DOANH SỐ
+// ============================================================
+function initBaoCao(){
+  // Fill năm
+  const years=[...new Set(DB.pxk.filter(p=>!p._deleted&&p.soSach==='Ghi Số').map(p=>p.ngay?.slice(0,4)))].sort().reverse();
+  const curYear=new Date().getFullYear().toString();
+  if(!years.includes(curYear)) years.unshift(curYear);
+  const selNam=document.getElementById('bc-nam');
+  selNam.innerHTML=years.map(y=>`<option value="${y}"${y===curYear?' selected':''}>${y}</option>`).join('');
+  // Fill NV
+  const selNV=document.getElementById('bc-nv');
+  selNV.innerHTML='<option value="">-- Tất cả nhân viên --</option>'
+    +DB.nhanVien.map(n=>`<option value="${n.id}">(${n.ma})${n.ten}</option>`).join('');
+  // Fill tháng hiện tại
+  const curMonth=String(new Date().getMonth()+1).padStart(2,'0');
+  document.getElementById('bc-thang').value=curMonth;
+  renderBaoCao();
+}
+
+function bcGetFiltered(){
+  const nvId=document.getElementById('bc-nv')?.value||'';
+  const nam=document.getElementById('bc-nam')?.value||new Date().getFullYear().toString();
+  const thang=document.getElementById('bc-thang')?.value||'';
+  return DB.pxk.filter(p=>{
+    if(p._deleted||p.soSach!=='Ghi Số') return false;
+    if(nvId&&p.kdId!==nvId) return false;
+    if(!p.ngay?.startsWith(nam)) return false;
+    if(thang&&p.ngay?.slice(5,7)!==thang) return false;
+    return true;
+  });
+}
+
+function renderBaoCao(){
+  const list=bcGetFiltered();
+  const nam=document.getElementById('bc-nam')?.value||'';
+  const thang=document.getElementById('bc-thang')?.value||'';
+  const period=thang?`Tháng ${thang}/${nam}`:nam;
+
+  // ── Tổng quan cards ──
+  let tongDT=0,tongDon=0,tongSP=0,tongKH=new Set();
+  list.forEach(p=>{
+    const {total}=calcPXKTotals(p.items,p.vat);
+    tongDT+=total; tongDon++;
+    (p.items||[]).forEach(it=>tongSP+=it.sl);
+    tongKH.add(p.khId);
+  });
+  const cards=[
+    {icon:'💰',label:'Doanh Thu',val:fmt(tongDT)+' ₫',color:'var(--blue)'},
+    {icon:'📋',label:'Số Đơn',val:tongDon,color:'var(--green)'},
+    {icon:'📦',label:'Sản Phẩm Đã Xuất',val:tongSP+' SP',color:'#8b5cf6'},
+    {icon:'👥',label:'Khách Hàng',val:tongKH.size+' KH',color:'var(--orange)'},
+  ];
+  document.getElementById('bc-cards').innerHTML=cards.map(c=>`
+    <div class="dm-card" style="padding:16px;text-align:center">
+      <div style="font-size:24px;margin-bottom:6px">${c.icon}</div>
+      <div style="font-size:20px;font-weight:800;color:${c.color}">${c.val}</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:4px">${c.label} – ${period}</div>
+    </div>`).join('');
+
+  // ── Doanh số theo NV ──
+  const nvMap={};
+  list.forEach(p=>{
+    const nv=getNV(p.kdId);
+    const label=nv.ten?`(${nv.ma})${nv.ten}`:p.kdId;
+    const {total}=calcPXKTotals(p.items,p.vat);
+    nvMap[label]=(nvMap[label]||0)+total;
+  });
+  const nvArr=Object.entries(nvMap).sort((a,b)=>b[1]-a[1]);
+  const maxNV=nvArr[0]?.[1]||1;
+  document.getElementById('bc-nv-chart').innerHTML=nvArr.length?nvArr.map(([name,val])=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="font-weight:600">${name}</span>
+        <span style="color:var(--blue);font-weight:700">${fmt(val)} ₫</span>
+      </div>
+      <div style="background:var(--border);border-radius:4px;height:10px;overflow:hidden">
+        <div style="background:linear-gradient(90deg,#3b82f6,#8b5cf6);height:100%;width:${(val/maxNV*100).toFixed(1)}%;border-radius:4px;transition:width .4s"></div>
+      </div>
+    </div>`).join(''):'<div style="color:var(--t3);text-align:center;padding:20px">Không có dữ liệu</div>';
+
+  // ── Doanh số theo tháng ──
+  const thangMap={};
+  list.forEach(p=>{
+    const m=p.ngay?.slice(0,7)||'';
+    const {total}=calcPXKTotals(p.items,p.vat);
+    thangMap[m]=(thangMap[m]||0)+total;
+  });
+  const thangArr=Object.entries(thangMap).sort((a,b)=>a[0].localeCompare(b[0]));
+  const maxT=thangArr.reduce((m,[,v])=>Math.max(m,v),1);
+  document.getElementById('bc-thang-chart').innerHTML=thangArr.length?thangArr.map(([m,v])=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="font-weight:600">Tháng ${m.slice(5)}</span>
+        <span style="color:var(--green);font-weight:700">${fmt(v)} ₫</span>
+      </div>
+      <div style="background:var(--border);border-radius:4px;height:10px;overflow:hidden">
+        <div style="background:linear-gradient(90deg,#10b981,#3b82f6);height:100%;width:${(v/maxT*100).toFixed(1)}%;border-radius:4px"></div>
+      </div>
+    </div>`).join(''):'<div style="color:var(--t3);text-align:center;padding:20px">Không có dữ liệu</div>';
+
+  // ── Top sản phẩm ──
+  const topN=parseInt(document.getElementById('bc-top-n')?.value||10);
+  const spMap={};
+  list.forEach(p=>{
+    (p.items||[]).forEach(it=>{
+      const key=it.spId;
+      if(!spMap[key]) spMap[key]={sku:it.spId,ten:it.ten||getSP(it.spId).ten,sl:0,dt:0,don:it.don};
+      spMap[key].sl+=it.sl;
+      spMap[key].dt+=it.sl*it.donGia*(1-(it.ck||0)/100);
+    });
+  });
+  const spArr=Object.values(spMap).sort((a,b)=>b.sl-a.sl).slice(0,topN);
+  document.getElementById('bc-top-sp').innerHTML=`
+    <thead><tr><th>#</th><th>Mã SKU</th><th>Tên Sản Phẩm</th><th class="tr">SL Bán</th><th>ĐVT</th><th class="tr">Doanh Thu</th></tr></thead>
+    <tbody>${spArr.map((sp,i)=>`<tr>
+      <td><span style="background:${i<3?['#f59e0b','#94a3b8','#cd7c2e'][i]:'var(--border)'};color:${i<3?'#fff':'var(--t2)'};border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i+1}</span></td>
+      <td class="dm-sku">${sp.sku}</td>
+      <td>${sp.ten}</td>
+      <td class="tr" style="font-weight:700">${sp.sl}</td>
+      <td>${sp.don||'—'}</td>
+      <td class="tr" style="color:var(--blue);font-weight:700">${fmt(sp.dt)} ₫</td>
+    </tr>`).join('')}</tbody>`;
+
+  // ── Chi tiết đơn ──
+  const rows=[];
+  list.forEach(p=>{
+    const kh=getKH(p.khId);const nv=getNV(p.kdId);
+    (p.items||[]).forEach(it=>{
+      const tt=it.sl*it.donGia*(1-(it.ck||0)/100);
+      rows.push({ngay:p.ngay,ma:p.ma,kh:kh.ten,nv:nv.ten?`(${nv.ma})${nv.ten}`:p.kdId,ten:it.ten,sl:it.sl,don:it.don,tt});
+    });
+  });
+  rows.sort((a,b)=>b.ngay.localeCompare(a.ngay));
+  document.getElementById('bc-detail-count').textContent=`${rows.length} dòng`;
+  document.getElementById('bc-detail-tbody').innerHTML=rows.slice(0,200).map(r=>`<tr>
+    <td>${r.ngay}</td><td class="dm-sku">${r.ma}</td><td>${r.kh}</td>
+    <td style="font-size:11.5px">${r.nv}</td><td>${r.ten}</td>
+    <td class="tr">${r.sl}</td><td>${r.don||'—'}</td>
+    <td class="tr" style="color:var(--blue);font-weight:700">${fmt(r.tt)} ₫</td>
+  </tr>`).join('')+(rows.length>200?`<tr><td colspan="8" style="text-align:center;color:var(--t3);font-size:12px;padding:8px">… còn ${rows.length-200} dòng – xuất Excel để xem đầy đủ</td></tr>`:'');
+}
+
+function bcExportExcel(){
+  const list=bcGetFiltered();
+  const nvId=document.getElementById('bc-nv')?.value||'';
+  const nam=document.getElementById('bc-nam')?.value||'';
+  const thang=document.getElementById('bc-thang')?.value||'';
+  let csv='Ngày,Mã PXK,Khách Hàng,Nhân Viên,Mã SKU,Tên Hàng,ĐVT,Số Lượng,Đơn Giá,CK%,Thành Tiền,VAT%,Tổng PXK\n';
+  list.forEach(p=>{
+    const kh=getKH(p.khId);const nv=getNV(p.kdId);
+    const {total}=calcPXKTotals(p.items,p.vat);
+    (p.items||[]).forEach(it=>{
+      const tt=it.sl*it.donGia*(1-(it.ck||0)/100);
+      csv+=`${p.ngay},"${p.ma}","${kh.ten}","${nv.ten?'('+nv.ma+')'+nv.ten:p.kdId}",${it.spId},"${it.ten}",${it.don||''},${it.sl},${it.donGia},${it.ck||0}%,${Math.round(tt)},${p.vat||0}%,${Math.round(total)}\n`;
+    });
+  });
+  const label=(nvId?DB.nhanVien.find(n=>n.id===nvId)?.ten||nvId:'TatCaNV')+'_'+(thang?`T${thang}_`:'')+(nam||'');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=`BaoCaoDoanhSo_${label}.csv`;a.click();URL.revokeObjectURL(url);
+  toast(`✅ Đã xuất ${list.length} đơn – ${label}`);
+}
 
 function renderDashboard(){
   // stat cards
@@ -3888,71 +4203,35 @@ function renderDashboard(){
 function exportExcel(type){
   let csv='',name='export';
   if(type==='pxk'){
-    // Fix 5: export chi tiết từng dòng hàng trong từng PXK
-    csv='Ngày,Mã PXK,Khách Hàng,Địa Chỉ,HTTT,VAT%,Mã SKU,Tên Hàng,ĐVT,SL,Đơn Giá,CK%,Thành Tiền,Tổng Phiếu(+VAT),Số Sách\n';
-    DB.pxk.forEach(p=>{
-      const kh=getKH(p.khId);
-      const {total}=calcPXKTotals(p.items,p.vat);
-      if(p.items&&p.items.length){
-        p.items.forEach(it=>{
-          const tt=it.sl*it.donGia*(1-(it.ck||0)/100);
-          csv+=`${p.ngay},${p.ma},"${kh.ten}","${p.diachi||kh.diachi||''}",${p.httt},${p.vat}%,${it.spId},"${it.ten}",${it.don},${it.sl},${it.donGia},${it.ck||0}%,${Math.round(tt)},${Math.round(total)},${p.soSach}\n`;
-        });
-      } else {
-        csv+=`${p.ngay},${p.ma},"${kh.ten}","${p.diachi||''}",${p.httt},${p.vat}%,,,,,,,,${Math.round(total)},${p.soSach}\n`;
-      }
-    });
-    name='ChiTietXuatKho';
-  } else if(type==='congno'){
-    csv='Mã KH,Tên KH,SĐT,Tổng Dư Nợ\n';
-    DB.khachHang.forEach(k=>{const no=getKHDuNo(k.id);if(no>0)csv+=`${k.ma},"${k.ten}","${k.sdt}",${Math.round(no)}\n`;});
-    name='CongNoKhachHang';
-  } else if(type==='quy'){
-    csv='Ngày,Loại,Mã Phiếu,Diễn Giải,Số Tiền,Hình Thức\n';
-    DB.quy.forEach(q=>{csv+=`${q.ngay},${q.loai==='thu'?'Thu':'Chi'},${q.ma},"${q.dien}",${q.sotien},"${q.httt||''}"\n`;});
-    name='SoQuyThuChi';
-  } else if(type==='pnk'){
-    // Per-item detail for PNK too
-    csv='Ngày,Mã PNK,Nhà CC,HTTT,Trạng Thái,Mã SKU,Tên Hàng,ĐVT,SL,Đơn Giá Nhập,Thành Tiền,Tổng Phiếu\n';
-    DB.pnk.forEach(p=>{
-      const ncc=getNCC(p.nccId);
-      if(p.items&&p.items.length){
-        p.items.forEach(it=>{
-          csv+=`${p.ngay},${p.ma},"${ncc.ten}",${p.httt},${p.soSach},${it.spId},"${it.ten}",${it.don},${it.sl},${it.donGia},${Math.round(it.sl*it.donGia)},${Math.round(p.tongTien)}\n`;
-        });
-      } else {
-        csv+=`${p.ngay},${p.ma},"${ncc.ten}",${p.httt},${p.soSach},,,,,,, ${Math.round(p.tongTien)}\n`;
-      }
-    });
-    name='ChiTietNhapKho';
+    // Lấy danh sách được tích — nếu không tích thì xuất tất cả
+    const checkedIds=Array.from(document.querySelectorAll('.pxk-chk:checked')).map(c=>c.dataset.id);
+    const list=checkedIds.length>0
+      ? DB.pxk.filter(p=>!p._deleted&&checkedIds.includes(p.id))
+      : DB.pxk.filter(p=>!p._deleted);
+    const note=checkedIds.length>0?`(${checkedIds.length} đơn đã chọn)`:'(tất cả)';
+    csv='Ngày,Mã PXK,Khách Hàng,Mã SKU,Tên Hàng,ĐVT,SL,Đơn Giá,CK%,Thành Tiền,Tổng Phiếu,Số Sách\n';
+    list.forEach(p=>{const kh=getKH(p.khId);const{total}=calcPXKTotals(p.items,p.vat);
+      (p.items||[]).forEach(it=>{csv+=`${p.ngay},${p.ma},"${kh.ten}",${it.spId},"${it.ten}",${it.don},${it.sl},${it.donGia},${it.ck||0}%,${Math.round(it.sl*it.donGia*(1-(it.ck||0)/100))},${Math.round(total)},${p.soSach}\n`;});});
+    name='PXK_ChiTiet';
+    toast(`✅ Đã xuất ${list.length} phiếu ${note}`);
   } else if(type==='baogia'){
-    csv='Ngày,Mã BG,Khách Hàng,Mã SKU,Tên Hàng,SL,Đơn Giá,CK%,Thành Tiền,Tổng BG,Trạng Thái\n';
-    DB.baoGia.forEach(b=>{
-      const kh=getKH(b.khId);
-      if(b.items&&b.items.length){
-        b.items.forEach(it=>{
-          const tt=it.sl*it.donGia*(1-(it.ck||0)/100);
-          csv+=`${b.ngay},${b.ma},"${kh.ten}",${it.spId},"${it.ten}",${it.sl},${it.donGia},${it.ck||0}%,${Math.round(tt)},${Math.round(b.tongTien)},${b.trangThai}\n`;
-        });
-      } else {
-        csv+=`${b.ngay},${b.ma},"${kh.ten}",,,,,,,${Math.round(b.tongTien)},${b.trangThai}\n`;
-      }
+    const checkedIds=Array.from(document.querySelectorAll('#bg-tbody input[type=checkbox]:checked')).map((_,i)=>{
+      // BG không có data-id, lấy theo index
+      return null;
     });
-    name='ChiTietBaoGia';
-  } else if(type==='hoadon'){
-    csv='Ngày,Số HD,Khách Hàng,Tổng Tiền,Bảng Kê PXK,Trạng Thái\n';
-    DB.hoaDon.forEach(h=>{const kh=getKH(h.khId);csv+=`${h.ngay},${h.soHD},"${kh.ten}",${Math.round(h.tongTien)},"${h.pxkList.join('|')}",${h.trangThai}\n`;});
-    name='HoaDonVAT';
+    // BaoGia: xuất tất cả (chưa có checkbox data-id)
+    csv='Ngày,Mã BG,Khách Hàng,Mã SKU,Tên Hàng,SL,Đơn Giá,CK%,Thành Tiền,Trạng Thái\n';
+    DB.baoGia.filter(b=>!b._deleted).forEach(b=>{const kh=getKH(b.khId);
+      (b.items||[]).forEach(it=>{const tt=it.sl*it.donGia*(1-(it.ck||0)/100);csv+=`${b.ngay},${b.ma},"${kh.ten}",${it.spId},"${it.ten}",${it.sl},${it.donGia},${it.ck||0}%,${Math.round(tt)},${b.trangThai}\n`;});});
+    name='BaoGia_ChiTiet';
+    toast('✅ Đã xuất BaoGia_ChiTiet.csv!');
   }
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download=name+'_'+todayStr()+'.csv'; a.click();
-  URL.revokeObjectURL(url);
-  toast('✅ Đã xuất file '+name+'.csv!');
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name+'_'+todayStr()+'.csv';a.click();URL.revokeObjectURL(url);
 }
 
 // ============ SYNC PAGE INIT ============
-function downloadAppsScript(){toast("Chức năng chỉ có trên máy chủ chính","error");}
+function downloadAppsScript(){toast('Chức năng chỉ có trên máy chủ chính','error');}
 
 function renderSyncPage(){
   lanRoleChange();
@@ -4519,9 +4798,7 @@ function tonResetAll(){
   // Bước 5: Auto-reconnect Drive + LAN nếu đã cấu hình trước đó
   setTimeout(()=>{
 
-    // Drive sync không có
-
-
+    // Drive sync không có trên Quản Lý
     // ── Auto-reconnect LAN ────────────────────────────────────
     const lanCfg = JSON.parse(localStorage.getItem('phuanh_lan_cfg')||'{}');
     if(lanCfg.baseUrl){
@@ -4563,6 +4840,66 @@ function tonResetAll(){
 </script>
 
 <!-- ========== THÙNG RÁC ========== -->
+<div class="page" id="page-bao-cao">
+  <div style="padding:0 0 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <h2 style="font-size:17px;font-weight:700;margin:0">📈 Báo Cáo Doanh Số</h2>
+    <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
+      <select id="bc-nv" onchange="renderBaoCao()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:var(--bg2)">
+        <option value="">-- Tất cả nhân viên --</option>
+      </select>
+      <select id="bc-nam" onchange="renderBaoCao()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:var(--bg2)"></select>
+      <select id="bc-thang" onchange="renderBaoCao()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:var(--bg2)">
+        <option value="">-- Cả năm --</option>
+        <option value="01">Tháng 1</option><option value="02">Tháng 2</option><option value="03">Tháng 3</option>
+        <option value="04">Tháng 4</option><option value="05">Tháng 5</option><option value="06">Tháng 6</option>
+        <option value="07">Tháng 7</option><option value="08">Tháng 8</option><option value="09">Tháng 9</option>
+        <option value="10">Tháng 10</option><option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+      </select>
+      <button class="btn btn-green btn-sm" onclick="bcExportExcel()">📊 Xuất Excel</button>
+    </div>
+  </div>
+
+  <!-- Tổng quan -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="bc-cards"></div>
+
+  <!-- Doanh số theo nhân viên -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="dm-card" style="padding:16px">
+      <div class="dm-title" style="margin-bottom:12px">👤 Doanh Số Theo Nhân Viên</div>
+      <div id="bc-nv-chart"></div>
+    </div>
+    <div class="dm-card" style="padding:16px">
+      <div class="dm-title" style="margin-bottom:12px">📅 Doanh Số Theo Tháng</div>
+      <div id="bc-thang-chart"></div>
+    </div>
+  </div>
+
+  <!-- Top sản phẩm -->
+  <div class="dm-card" style="padding:16px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div class="dm-title">🏆 Top Sản Phẩm Bán Chạy</div>
+      <select id="bc-top-n" onchange="renderBaoCao()" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg2);margin-left:auto">
+        <option value="10">Top 10</option><option value="20">Top 20</option><option value="50">Top 50</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto"><table class="dm-tbl" id="bc-top-sp"></table></div>
+  </div>
+
+  <!-- Chi tiết từng đơn theo nhân viên -->
+  <div class="dm-card" style="padding:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div class="dm-title">📋 Chi Tiết Đơn Hàng</div>
+      <span id="bc-detail-count" style="font-size:12px;color:var(--t3)"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="dm-tbl" id="bc-detail-tbl">
+        <thead><tr><th>Ngày</th><th>Mã PXK</th><th>Khách Hàng</th><th>Nhân Viên</th><th>Mặt Hàng</th><th>SL</th><th>ĐVT</th><th class="tr">Doanh Thu</th></tr></thead>
+        <tbody id="bc-detail-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="page" id="page-thung-rac">
   <div class="toolbar" style="flex-wrap:wrap;gap:8px">
     <div style="font-size:14px;font-weight:700;color:var(--t1)">🗑️ Thùng Rác</div>
