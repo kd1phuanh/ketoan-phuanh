@@ -1619,7 +1619,16 @@ function inBaoGia(bgId){
   const kh=getKH(b.khId),nv=getNV(b.nvId||'');
   const vatPct=Number(b.vat??0);
 
+  // Tính trước hasCK để quyết định hiện/ẩn cột CK
   let sub=0,tongGoc=0,tongCK=0;
+  b.items.forEach(it=>{
+    const goc=it.sl*it.donGia;
+    tongGoc+=goc; tongCK+=goc*(it.ck||0)/100;
+  });
+  const hasCK=tongCK>0;
+  // Reset để tính lại trong rows
+  sub=0; tongGoc=0; tongCK=0;
+
   const rows=b.items.map((it,i)=>{
     const goc=it.sl*it.donGia;
     const ck=goc*(it.ck||0)/100;
@@ -1632,12 +1641,11 @@ function inBaoGia(bgId){
       +'<td class="tc" style="width:48px">'+it.don+'</td>'
       +'<td class="tr" style="width:60px">'+it.sl+'</td>'
       +'<td class="tr" style="width:90px">'+fmt(it.donGia)+'</td>'
-      +'<td class="tc" style="width:55px">'+(it.ck?it.ck+'%':'—')+'</td>'
+      +(hasCK?'<td class="tc" style="width:55px">'+(it.ck?it.ck+'%':'—')+'</td>':'')
       +'<td class="tr" style="width:95px">'+fmt(tt)+'</td>'
       +'</tr>';
   }).join('');
 
-  const hasCK=tongCK>0;
   const tax=sub*vatPct/100;
   const total=sub+tax;
 
@@ -1654,12 +1662,14 @@ function inBaoGia(bgId){
     +(b.ghichu?'<div class="pbuyer"><span class="pbuyer-lbl">Ghi chú:</span>'+b.ghichu+'</div>':'')
     +'<table class="ptbl" style="table-layout:fixed;width:100%"><colgroup>'
     +'<col style="width:36px"><col style="width:100px"><col><col style="width:48px">'
-    +'<col style="width:60px"><col style="width:90px"><col style="width:55px"><col style="width:95px">'
+    +'<col style="width:60px"><col style="width:90px">'
+    +(hasCK?'<col style="width:55px">':'')
+    +'<col style="width:95px">'
     +'</colgroup><thead><tr>'
     +'<th class="tc">STT</th><th>Mã hàng</th><th>Tên hàng</th>'
     +'<th class="tc">ĐVT</th><th class="tc">Số lượng</th>'
     +'<th class="tr">Đơn giá</th>'
-    +'<th class="tc">CK%</th>'
+    +(hasCK?'<th class="tc">CK%</th>':'')
     +'<th class="tr">Thành tiền</th>'
     +'</tr></thead><tbody>'+rows+'</tbody></table>'
     +'<table class="ptot-tbl">'
