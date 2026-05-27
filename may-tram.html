@@ -716,7 +716,18 @@ const DB={
 // ============ UTILS ============
 function fmt(n){return Math.round(n||0).toLocaleString('vi-VN')}
 function todayStr(){return new Date().toISOString().slice(0,10)}
-function genId(p){return p+'-'+String(Date.now()).slice(-6)}
+function genId(prefix){
+  // Lấy số thứ tự cao nhất hiện có + 1, định dạng 5 chữ số: PXK-00001
+  const key='phuanh_seq_'+prefix;
+  const existing=(DB[{PXK:'pxk',PNK:'pnk',BG:'baoGia',PT:'quy',HD:'hoaDon'}[prefix]]||[])
+    .map(x=>{const m=x.ma?.match(/\d+$/);return m?parseInt(m[0]):0;})
+    .filter(n=>!isNaN(n));
+  const stored=parseInt(localStorage.getItem(key)||'0');
+  const maxExist=existing.length?Math.max(...existing):0;
+  const next=Math.max(maxExist,stored)+1;
+  localStorage.setItem(key,String(next));
+  return prefix+'-'+String(next).padStart(5,'0');
+}
 function getKH(id){return DB.khachHang.find(x=>x.id===id)||{}}
 function getNV(id){return DB.nhanVien.find(x=>x.id===id)||{}}
 function getSP(id){return DB.sanPham.find(x=>x.id===id)||{}}
@@ -1093,7 +1104,20 @@ function unghiSoPXK(id){
   const p=DB.pxk.find(x=>x.id===id);
   if(!p) return;
   if(isPXKLocked(p)){toast('Phiếu đã bị khóa bởi HĐ đã ký!','error');return;}
-  confirm2('Bỏ Ghi Sổ','Bỏ ghi sổ phiếu '+id+'?',()=>{p.soSach='Nháp';toast('Đã bỏ ghi sổ');renderPXKTable();});
+  confirm2('Bỏ Ghi Sổ','Bỏ ghi sổ phiếu '+id+'? Tồn kho sẽ được hoàn lại.',()=>{
+    // Hoàn lại tồn kho khi bỏ ghi sổ
+    (p.items||[]).forEach(it=>{
+      const sp=DB.sanPham.find(x=>x.id===it.spId);
+      if(sp){sp.ton=(sp.ton||0)+it.sl;sp.updatedAt=Date.now();}
+    });
+    p.soSach='Nháp';
+    p.updatedAt=Date.now();
+    if(window._autoSave) window._autoSave();
+    if(_tramBaseUrl) setTimeout(()=>_tramPushMerged(true),200);
+    toast('↩ Đã bỏ ghi sổ – tồn kho đã hoàn lại');
+    renderPXKTable();
+    renderDMSanPham();
+  });
 }
 function xoaPXK(id){
   const p=DB.pxk.find(x=>x.id===id);
@@ -1239,7 +1263,10 @@ function inPXK(id){
 function renderPXKTable(){
   const q=(document.getElementById('pxk-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('pxk-tbody');if(!tbody)return;
-  const list=DB.pxk.filter(p=>!q||p.ma.toLowerCase().includes(q)||(getKH(p.khId).ten||'').toLowerCase().includes(q));
+  // Sắp xếp: mới nhất lên đầu
+  const list=DB.pxk
+    .filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q)||(getKH(p.khId).ten||'').toLowerCase().includes(q)))
+    .sort((a,b)=>b.ngay.localeCompare(a.ngay)||(b.updatedAt||0)-(a.updatedAt||0));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu xuất kho nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(p=>{
     const kh=getKH(p.khId);const{total}=calcPXKTotals(p.items,p.vat);
@@ -1324,7 +1351,9 @@ function saveBaoGia(){
 function renderBaoGiaTable(){
   const q=(document.getElementById('bg-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('bg-tbody');if(!tbody)return;
-  const list=DB.baoGia.filter(b=>!b._deleted&&(!q||b.ma.toLowerCase().includes(q)||(getKH(b.khId).ten||'').toLowerCase().includes(q)));
+  const list=DB.baoGia
+    .filter(b=>!b._deleted&&(!q||b.ma.toLowerCase().includes(q)||(getKH(b.khId).ten||'').toLowerCase().includes(q)))
+    .sort((a,b)=>b.ngay.localeCompare(a.ngay)||(b.updatedAt||0)-(a.updatedAt||0));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-ico">📋</div><p>Chưa có báo giá nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(b=>{
     const kh=getKH(b.khId);
