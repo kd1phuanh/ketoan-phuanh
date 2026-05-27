@@ -1034,11 +1034,17 @@ function savePXK(){
   const ctx=DB._editCtx;
   if(ctx&&ctx.id){
     const p=DB.pxk.find(x=>x.id===ctx.id);
+    // Hoàn lại tồn kho cũ
+    (p.items||[]).forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=(sp.ton||0)+it.sl;sp.updatedAt=Date.now();}});
     Object.assign(p,stamp({khId,ngay,kdId:document.getElementById('pxk-kd').value,httt:document.getElementById('pxk-httt').value,vat:vatPct,diachi:document.getElementById('pxk-diachi').value,sdt:document.getElementById('pxk-sdt').value,ghichu:document.getElementById('pxk-ghichu').value,items,soSach:'Ghi Số'}));
+    // Trừ tồn kho mới
+    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
     toast('Đã cập nhật PXK!');
   } else {
     const ma=genId('PXK');
     DB.pxk.unshift(stamp({id:ma,ma,ngay,khId,kdId:document.getElementById('pxk-kd').value,httt:document.getElementById('pxk-httt').value,vat:vatPct,diachi:document.getElementById('pxk-diachi').value,sdt:document.getElementById('pxk-sdt').value,ghichu:document.getElementById('pxk-ghichu').value,items,soSach:'Ghi Số',hoadonVAT:'Chưa Xuất'}));
+    // Trừ tồn kho khi xuất
+    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
     toast('Đã lập & ghi sổ PXK: '+ma);
   }
   closeMo('mo-pxk');renderPXKTable();
