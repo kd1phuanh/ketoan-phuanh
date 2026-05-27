@@ -1617,27 +1617,58 @@ function renderHoaDon(){
 function inBaoGia(bgId){
   const b=DB.baoGia.find(x=>x.id===bgId);if(!b)return;
   const kh=getKH(b.khId),nv=getNV(b.nvId||'');
-  let sub=0;
+  const vatPct=Number(b.vat??0);
+
+  let sub=0,tongGoc=0,tongCK=0;
   const rows=b.items.map((it,i)=>{
-    const tt=it.sl*it.donGia*(1-(it.ck||0)/100);sub+=tt;
-    return '<tr><td class="tc">'+(i+1)+'</td><td>'+it.spId+'</td><td>'+it.ten+'</td>'
-      +'<td class="tc">'+it.don+'</td><td class="tr">'+it.sl+'</td>'
-      +'<td class="tr">'+fmt(it.donGia)+'</td><td class="tr">'+(it.ck?it.ck+'%':'—')+'</td>'
-      +'<td class="tr">'+fmt(tt)+'</td></tr>';
+    const goc=it.sl*it.donGia;
+    const ck=goc*(it.ck||0)/100;
+    const tt=goc-ck;
+    sub+=tt; tongGoc+=goc; tongCK+=ck;
+    return '<tr>'
+      +'<td class="tc">'+(i+1)+'</td>'
+      +'<td>'+it.spId+'</td>'
+      +'<td>'+it.ten+'</td>'
+      +'<td class="tc">'+it.don+'</td>'
+      +'<td class="tr">'+it.sl+'</td>'
+      +'<td class="tr">'+fmt(it.donGia)+'</td>'
+      +'<td class="tr">'+(it.ck?it.ck+'%':'—')+'</td>'
+      +'<td class="tr">'+fmt(tt)+'</td>'
+      +'</tr>';
   }).join('');
-  const ngayHL=new Date(b.ngay||todayStr());ngayHL.setDate(ngayHL.getDate()+(b.hieuluc||30));
+
+  const hasCK=tongCK>0;
+  const tax=sub*vatPct/100;
+  const total=sub+tax;
+
+  const ngayHL=new Date(b.ngay||todayStr());
+  ngayHL.setDate(ngayHL.getDate()+(parseInt(b.hieuluc)||30));
+  const ngayHLStr=ngayHL.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'});
+
   const body=_printCo('','')
     +_printTitle('Báo Giá Hàng Hóa',b.ngay,b.ma)
-    +'<div class="pbuyer"><b>Kính gửi:</b> '+kh.ten+'</div>'
-    +'<div class="pbuyer"><span class="pbuyer-lbl">Địa chỉ:</span>'+(kh.diachi||'—')+'</div>'
-    +'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+(kh.sdt||'—')+'</div>'
+    +'<div class="pbuyer" style="margin-top:8px"><b>Kính gửi:</b> '+kh.ten+'</div>'
+    +(b.diachi||kh.diachi?'<div class="pbuyer"><span class="pbuyer-lbl">Địa chỉ:</span>'+(b.diachi||kh.diachi)+'</div>':'')
+    +(kh.sdt?'<div class="pbuyer"><span class="pbuyer-lbl">Điện thoại:</span>'+kh.sdt+'</div>':'')
     +(nv.ten?'<div class="pbuyer"><span class="pbuyer-lbl">Nhân viên:</span>'+nv.ten+(nv.sdt?' – '+nv.sdt:'')+'</div>':'')
     +(b.ghichu?'<div class="pbuyer"><span class="pbuyer-lbl">Ghi chú:</span>'+b.ghichu+'</div>':'')
-    +'<table class="ptbl"><thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>ĐVT</th><th>Số lượng</th><th>Đơn giá</th><th>CK%</th><th>Thành tiền</th></tr></thead>'
-    +'<tbody>'+rows+'</tbody></table>'
-    +'<table class="ptot-tbl"><tr><td class="ptot-lbl">Tổng tiền hàng (chưa VAT)</td><td class="ptot-amt">'+fmt(sub)+'</td></tr></table>'
-    +'<div class="pchu">Báo giá hiệu lực đến: <b>'+ngayHL.toISOString().slice(0,10)+'</b></div>'
+    +'<table class="ptbl"><thead><tr>'
+    +'<th style="width:36px">STT</th><th style="width:100px">Mã hàng</th><th>Tên hàng</th>'
+    +'<th style="width:48px">ĐVT</th><th style="width:60px">Số lượng</th>'
+    +'<th style="width:80px">Đơn giá</th>'
+    +(hasCK?'<th style="width:60px">CK%</th>':'')
+    +'<th style="width:90px">Thành tiền</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<table class="ptot-tbl">'
+    +'<tr><td class="ptot-lbl">Cộng tiền hàng (Đã trừ CK)</td><td class="ptot-amt">'+fmt(sub)+'</td></tr>'
+    +(hasCK?'<tr><td class="ptot-lbl">Tỷ lệ CK: '+(tongGoc>0?(tongCK/tongGoc*100).toFixed(2):0)+'%</td><td class="ptot-amt">Số tiền CK: '+fmt(tongCK)+'</td></tr>':'')
+    +(vatPct>0?'<tr><td class="ptot-lbl">Thuế suất GTGT: '+vatPct+'%</td><td class="ptot-amt">Tiền thuế GTGT: '+fmt(tax)+'</td></tr>':'')
+    +'<tr class="ptot-final"><td class="ptot-lbl">Tổng tiền thanh toán</td><td class="ptot-amt">'+fmt(total)+'</td></tr>'
+    +'</table>'
+    +'<div class="pchu"><span>Số tiền bằng chữ:</span> '+soThanhChu(Math.round(total))+'./.</div>'
+    +'<div class="pchu">Báo giá hiệu lực đến: <b>'+ngayHLStr+'</b></div>'
     +_printSign(b.ngay,'Khách hàng','Người báo giá','(Ký, ghi rõ họ tên)');
+
   const w=window.open('','_blank','width=920,height=720');
   if(!w){toast('Cho phép popup để in!','error');return;}
   w.document.write(_buildPrintHTML(body));w.document.close();
