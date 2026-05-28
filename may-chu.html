@@ -797,14 +797,30 @@ select{font-family:inherit}
     <div class="mo-head"><h2 id="mo-pnk-title">Lập Phiếu Nhập Kho Vật Tư</h2><button class="mo-close" onclick="closeMo('mo-pnk')">×</button></div>
     <div class="mo-body">
       <div class="form-grid fg3">
-        <div class="fg"><label>Nhà Cung Cấp <span class="req">*</span></label><select id="pnk-ncc"></select></div>
+        <div class="fg">
+          <label>Nhà Cung Cấp <span class="req">*</span></label>
+          <div class="ac-wrap">
+            <input type="text" id="pnk-ncc-input" placeholder="Gõ tên hoặc mã NCC…" autocomplete="off"
+              oninput="acSearch('pnk-ncc',this.value)" onfocus="acSearch('pnk-ncc',this.value)">
+            <div class="ac-drop" id="pnk-ncc-drop"></div>
+            <input type="hidden" id="pnk-ncc">
+          </div>
+        </div>
         <div class="fg"><label>Ngày Nhập <span class="req">*</span></label><input type="date" id="pnk-ngay"></div>
         <div class="fg"><label>Hình Thức TT</label>
           <select id="pnk-httt">
             <option>Tiền Mặt</option>
             <option>Chuyển Khoản</option>
-            <option>Công Nợ</option>
+            <option selected>Công Nợ</option>
           </select>
+        </div>
+      </div>
+      <div class="form-grid fg2">
+        <div class="fg"><label>Địa Chỉ NCC <small style="color:var(--t3);font-weight:400">(tự điền, có thể sửa)</small></label>
+          <input type="text" id="pnk-diachi" placeholder="Địa chỉ nhà cung cấp…">
+        </div>
+        <div class="fg"><label>Điện Thoại NCC <small style="color:var(--t3);font-weight:400">(tự điền, có thể sửa)</small></label>
+          <input type="text" id="pnk-sdtncc" placeholder="Số điện thoại NCC…">
         </div>
       </div>
       <div class="form-grid fg2">
@@ -1266,9 +1282,31 @@ function showTab(el,id){
 }
 
 // ============ MODAL ============
-function openMo(id){document.getElementById(id).classList.add('open')}
-function closeMo(id){document.getElementById(id).classList.remove('open');DB._editCtx=null}
-document.querySelectorAll('.mo').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+function openMo(id){document.getElementById(id).classList.add('open');}
+function closeMo(id){document.getElementById(id).classList.remove('open');if(DB)DB._editCtx=null;}
+
+// Modal quan trọng (có form nhập liệu) - KHÔNG đóng khi click ngoài
+const MODAL_NO_BACKDROP=['mo-pxk','mo-pnk','mo-baogia','mo-dm'];
+document.querySelectorAll('.mo').forEach(o=>{
+  o.addEventListener('click',e=>{
+    if(e.target!==o) return;
+    if(MODAL_NO_BACKDROP.includes(o.id)) return;
+    o.classList.remove('open');
+  });
+});
+// ESC để đóng modal
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape') return;
+  const opened=[...document.querySelectorAll('.mo.open')];
+  if(!opened.length) return;
+  const top=opened[opened.length-1];
+  if(MODAL_NO_BACKDROP.includes(top.id)){
+    if(confirm('Bạn có muốn hủy phiếu này không?\nDữ liệu chưa lưu sẽ bị mất.'))
+      top.classList.remove('open');
+  } else {
+    top.classList.remove('open');
+  }
+});
 
 // ============ ITEM ROWS ============
 function spOptions(){
@@ -1455,18 +1493,26 @@ function calcPNK(){
 const _acActive={};
 function acSearch(ctx, q){
   const drop=document.getElementById(ctx+'-drop');
-  const hiddenInput=document.getElementById(ctx);
   if(!drop) return;
   const isKH=ctx.endsWith('-kh');
-  const list = isKH
-    ? DB.khachHang.filter(k=>!k._deleted&&(!q||k.ten.toLowerCase().includes(q.toLowerCase())||k.ma.toLowerCase().includes(q.toLowerCase()))).slice(0,20)
-    : DB.sanPham.filter(s=>!s._deleted&&(!q||s.ten.toLowerCase().includes(q.toLowerCase())||s.sku.toLowerCase().includes(q.toLowerCase()))).slice(0,20);
+  const isNCC=ctx.endsWith('-ncc');
+  let list=[];
+  if(isKH){
+    list=DB.khachHang.filter(k=>!k._deleted&&(!q||k.ten.toLowerCase().includes(q.toLowerCase())||k.ma.toLowerCase().includes(q.toLowerCase()))).slice(0,20);
+  } else if(isNCC){
+    list=DB.nhaCungCap.filter(n=>!n._deleted&&(!q||n.ten.toLowerCase().includes(q.toLowerCase())||n.ma.toLowerCase().includes(q.toLowerCase()))).slice(0,20);
+  } else {
+    list=DB.sanPham.filter(s=>!s._deleted&&(!q||s.ten.toLowerCase().includes(q.toLowerCase())||s.sku.toLowerCase().includes(q.toLowerCase()))).slice(0,20);
+  }
   if(!list.length){drop.innerHTML=`<div class="ac-item" style="color:var(--t3)">Không tìm thấy kết quả</div>`;drop.classList.add('open');return;}
   drop.innerHTML=list.map((item,i)=>{
-    const main=isKH?item.ten:(item.sku+' – '+item.ten);
-    const sub=isKH?('SĐT: '+item.sdt+(item.diachi?' | '+item.diachi.slice(0,40):'')):'Tồn: '+item.ton+' '+item.don+' | Giá: '+fmt(item.giaBan)+'₫';
+    let main,sub;
+    if(isKH){main=item.ten;sub='SĐT: '+item.sdt+(item.diachi?' | '+item.diachi.slice(0,40):'');}
+    else if(isNCC){main=item.ten;sub='SĐT: '+(item.sdt||'—')+(item.diachi?' | '+item.diachi.slice(0,40):'');}
+    else{main=item.sku+' – '+item.ten;sub='Tồn: '+item.ton+' '+item.don+' | Giá: '+fmt(item.giaBan)+'₫';}
+    const badge=isKH?item.ma:isNCC?item.ma:item.sku;
     return `<div class="ac-item" onmousedown="acSelect('${ctx}','${item.id}')" data-idx="${i}">
-      <div class="ac-item-main">${main}<span class="ac-item-badge">${isKH?item.ma:item.sku}</span></div>
+      <div class="ac-item-main">${main}<span class="ac-item-badge">${badge}</span></div>
       <div class="ac-item-sub">${sub}</div>
     </div>`;
   }).join('');
@@ -1475,26 +1521,29 @@ function acSearch(ctx, q){
 
 function acSelect(ctx, itemId){
   const isKH=ctx.endsWith('-kh');
+  const isNCC=ctx.endsWith('-ncc');
   const drop=document.getElementById(ctx+'-drop');
   const input=document.getElementById(ctx+'-input');
   const hidden=document.getElementById(ctx);
+  drop?.classList.remove('open');
   if(isKH){
     const kh=DB.khachHang.find(x=>x.id===itemId);
     if(!kh) return;
-    input.value=kh.ten;
-    hidden.value=kh.id;
-    drop.classList.remove('open');
-    // auto-fill address if available
+    input.value=kh.ten; hidden.value=kh.id;
     const prefix=ctx.replace('-kh','');
-    const addrEl=document.getElementById(prefix+'-diachi');
-    if(addrEl&&kh.diachi) addrEl.value=kh.diachi;
-    const sdtEl=document.getElementById(prefix+'-sdt');
-    if(sdtEl&&kh.sdt) sdtEl.value=kh.sdt;
+    const addrEl=document.getElementById(prefix+'-diachi');if(addrEl&&kh.diachi) addrEl.value=kh.diachi;
+    const sdtEl=document.getElementById(prefix+'-sdt');if(sdtEl&&kh.sdt) sdtEl.value=kh.sdt;
+  } else if(isNCC){
+    const ncc=DB.nhaCungCap.find(x=>x.id===itemId);
+    if(!ncc) return;
+    input.value=ncc.ma+' – '+ncc.ten; hidden.value=ncc.id;
+    const prefix=ctx.replace('-ncc','');
+    const addrEl=document.getElementById(prefix+'-diachi');if(addrEl) addrEl.value=ncc.diachi||'';
+    const sdtEl=document.getElementById(prefix+'-sdtncc');if(sdtEl) sdtEl.value=ncc.sdt||'';
+  } else {
     const sp=DB.sanPham.find(x=>x.id===itemId);
     if(!sp) return;
-    input.value=sp.sku+' – '+sp.ten;
-    hidden.value=sp.id;
-    drop.classList.remove('open');
+    input.value=sp.sku+' – '+sp.ten; hidden.value=sp.id;
   }
 }
 
@@ -2484,20 +2533,29 @@ function openModalPNK(pnkId=null){
     const p=DB.pnk.find(x=>x.id===pnkId);
     if(p&&p.soSach==='Ghi Số'){toast('Phiếu đã ghi sổ – nhấn "Bỏ Ghi Sổ" trước khi sửa!','error');return;}
   }
-  const sel=document.getElementById('pnk-ncc');
-  sel.innerHTML=DB.nhaCungCap.map(n=>`<option value="${n.id}">${n.ma} – ${n.ten}</option>`).join('');
+  // Reset fields
   document.getElementById('pnk-ngay').value=todayStr();
   document.getElementById('pnk-items').innerHTML='';
   document.getElementById('pnk-ghichu').value='';
   document.getElementById('pnk-vat').value='8';
   document.getElementById('pnk-httt').value='Công Nợ';
+  document.getElementById('pnk-ncc-input').value='';
+  document.getElementById('pnk-ncc').value='';
+  document.getElementById('pnk-diachi').value='';
+  document.getElementById('pnk-sdtncc').value='';
+
   if(pnkId){
     const p=DB.pnk.find(x=>x.id===pnkId);
     document.getElementById('mo-pnk-title').textContent='Sửa Phiếu Nhập Kho';
+    // Load NCC via autocomplete helper
+    const ncc=getNCC(p.nccId);
+    document.getElementById('pnk-ncc-input').value=ncc.ten?ncc.ma+' – '+ncc.ten:'';
     document.getElementById('pnk-ncc').value=p.nccId;
     document.getElementById('pnk-ngay').value=p.ngay;
     document.getElementById('pnk-httt').value=p.httt;
     document.getElementById('pnk-ghichu').value=p.ghichu||'';
+    document.getElementById('pnk-diachi').value=p.diachi||ncc.diachi||'';
+    document.getElementById('pnk-sdtncc').value=p.sdtncc||ncc.sdt||'';
     if(p.vat!==undefined) document.getElementById('pnk-vat').value=p.vat;
     p.items.forEach(it=>addItemRow('pnk',it));
   } else {
@@ -2524,7 +2582,7 @@ function savePNK(){
   const nccId=document.getElementById('pnk-ncc').value;
   const ngay=document.getElementById('pnk-ngay').value;
   if(!nccId||!ngay){toast('Vui lòng chọn nhà cung cấp và ngày!','error');return;}
-  const items=getItemsFromTbody('pnk-items',true); // hasCK=true
+  const items=getItemsFromTbody('pnk-items',true);
   if(!items.length){toast('Vui lòng thêm ít nhất 1 mặt hàng!','error');return;}
   const vatPct=Number(document.getElementById('pnk-vat').value??0);
   let sub=0; items.forEach(it=>sub+=it.sl*it.donGia*(1-(it.ck||0)/100));
@@ -2532,6 +2590,8 @@ function savePNK(){
   const tot=sub+tax;
   const httt=document.getElementById('pnk-httt').value;
   const ghichu=document.getElementById('pnk-ghichu').value;
+  const diachi=document.getElementById('pnk-diachi').value;
+  const sdtncc=document.getElementById('pnk-sdtncc').value;
   const ctx=DB._editCtx;
   if(ctx&&ctx.id){
     const p=DB.pnk.find(x=>x.id===ctx.id);
@@ -2541,14 +2601,14 @@ function savePNK(){
       if(p.soSach==='Ghi Số'){
         p.items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
       }
-      Object.assign(p,{nccId,ngay,httt,ghichu,vat:vatPct,items,tongTien:tot,soSach:'Ghi Số',updatedAt:Date.now()});
+      Object.assign(p,{nccId,ngay,httt,ghichu,diachi,sdtncc,vat:vatPct,items,tongTien:tot,soSach:'Ghi Số',updatedAt:Date.now()});
       // Cộng tồn kho mới
       items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=(sp.ton||0)+it.sl;sp.updatedAt=Date.now();}});
     }
     toast('✅ Đã cập nhật & ghi sổ phiếu nhập kho!');
   } else {
     const ma=genId('PNK');
-    DB.pnk.unshift({id:ma,ma,ngay,nccId,httt,ghichu,vat:vatPct,items,tongTien:tot,soSach:'Ghi Số',updatedAt:Date.now()});
+    DB.pnk.unshift({id:ma,ma,ngay,nccId,httt,ghichu,diachi,sdtncc,vat:vatPct,items,tongTien:tot,soSach:'Ghi Số',updatedAt:Date.now()});
     // Cập nhật tồn kho
     items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton+=it.sl;sp.updatedAt=Date.now();}});
     toast('✅ Đã lập & ghi sổ phiếu nhập kho: '+ma);
@@ -2581,8 +2641,10 @@ function xoaPNK(id){
 // NCC debt helper
 function getNCCDuNo(nccId){
   let no=0;
-  DB.pnk.filter(p=>p.nccId===nccId&&p.soSach==='Ghi Số'&&p.httt==='Công Nợ').forEach(p=>no+=p.tongTien);
-  DB.quy.filter(q=>q.loai==='chi'&&q.nccId===nccId).forEach(q=>no-=q.sotien);
+  // Tính tổng nợ từ PNK: httt không phải Tiền Mặt = Công Nợ
+  DB.pnk.filter(p=>!p._deleted&&p.nccId===nccId&&p.soSach==='Ghi Số'&&p.httt!=='Tiền Mặt').forEach(p=>no+=p.tongTien);
+  // Trừ các khoản đã chi trả
+  DB.quy.filter(q=>!q._deleted&&q.loai==='chi'&&q.nccId===nccId).forEach(q=>no-=q.sotien);
   return Math.max(0,no);
 }
 
@@ -2650,15 +2712,21 @@ function renderPNKTable(){
 function renderNCCCongNo(){
   const tbody=document.getElementById('ncc-cn-tbody');
   if(!tbody) return;
-  tbody.innerHTML=DB.nhaCungCap.map(n=>{
+  // Chỉ hiện NCC có nợ > 0 (PNK httt != Tiền Mặt)
+  const nccList=DB.nhaCungCap.filter(n=>!n._deleted&&getNCCDuNo(n.id)>0);
+  if(!nccList.length){
+    tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--t3)">✅ Không có nhà cung cấp nào đang nợ</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=nccList.map(n=>{
     const no=getNCCDuNo(n.id);
     return `<tr>
       <td>${n.ma}</td><td>${n.ten}</td><td>${n.sdt}</td>
-      <td class="tr money ${no>0?'m-red':''}">
-        ${no>0?`<span class="lnk" onclick="openNCCDebtDetail('${n.id}')">${fmt(no)} ₫</span>`:`${fmt(no)} ₫`}
+      <td class="tr money m-red">
+        <span class="lnk" onclick="openNCCDebtDetail('${n.id}')">${fmt(no)} ₫</span>
       </td>
       <td><div class="acts">
-        ${no>0?`<button class="btn btn-outline btn-sm" onclick="openNCCDebtDetail('${n.id}')">🔍 Chi Tiết</button>`:''}
+        <button class="btn btn-outline btn-sm" onclick="openNCCDebtDetail('${n.id}')">🔍 Chi Tiết</button>
         <button class="btn btn-outline btn-sm" onclick="openThanhToanNCC('${n.id}')">💸 Thanh toán</button>
       </div></td>
     </tr>`;
@@ -2673,7 +2741,7 @@ function openNCCDebtDetail(nccId){
   // Reuse a dialog similar to cn-detail but for NCC
   // We'll build a custom modal inline using confirm2 framework → actually open a dedicated modal
   // Build content for a simple modal
-  const pnkList=DB.pnk.filter(p=>p.nccId===nccId&&p.soSach==='Ghi Số'&&p.httt==='Công Nợ');
+  const pnkList=DB.pnk.filter(p=>!p._deleted&&p.nccId===nccId&&p.soSach==='Ghi Số'&&p.httt!=='Tiền Mặt');
   let rows=pnkList.map(p=>`<tr>
     <td><input type="checkbox" class="ncc-pnk-chk" data-id="${p.id}" data-total="${p.tongTien}" checked onchange="nccUpdatePanel()"></td>
     <td><span class="lnk" onclick="inPNK('${p.id}')">${p.ma}</span></td>
