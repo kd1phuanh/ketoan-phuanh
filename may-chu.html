@@ -32,8 +32,8 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--t1
 .cloud-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 /* PAGES */
-.page{display:none;flex:1;overflow-y:auto;padding:20px 24px}
-.page.active{display:block}
+.page{display:none;flex:1;overflow-y:auto;padding:20px 24px;min-width:0;width:100%;box-sizing:border-box}
+.page.active{display:flex;flex-direction:column;min-width:0}
 /* TABS */
 .sub-tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:18px}
 .sub-tab{padding:9px 18px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--t2);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap}
@@ -277,6 +277,7 @@ select{font-family:inherit}
     <div class="nav-item" onclick="showPage('so-quy')"><span class="nav-icon">💰</span>Sổ Quỹ Thu Chi</div>
     <div class="nav-item" onclick="showPage('danh-muc')"><span class="nav-icon">🗂️</span>Danh Mục (Dữ liệu)</div>
     <div class="nav-item" onclick="showPage('bao-cao')"><span class="nav-icon">📈</span>Báo Cáo Doanh Số</div>
+    <div class="nav-item" onclick="showPage('cham-soc-kh')"><span class="nav-icon">👥</span>Chăm Sóc KH</div>
     <div class="nav-item" onclick="showPage('dong-bo')"><span class="nav-icon">☁️</span>Đồng Bộ Đám Mây</div>
     <div class="nav-item" id="nav-trash" onclick="showPage('thung-rac')"><span class="nav-icon">🗑️</span>Thùng Rác <span id="trash-badge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></div>
   </div>
@@ -655,6 +656,138 @@ select{font-family:inherit}
   <div class="print-wrap" id="print-content"></div>
 </div>
 
+
+
+<div class="page" id="page-bao-cao">
+  <div style="padding:0 0 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <h2 style="font-size:17px;font-weight:700;margin:0">📈 Báo Cáo Doanh Số</h2>
+    <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
+      <select id="bc-nv" onchange="renderBaoCao()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:var(--bg2)">
+        <option value="">-- Tất cả nhân viên --</option>
+      </select>
+      <select id="bc-nam" onchange="renderBaoCao()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:var(--bg2)"></select>
+      <select id="bc-thang" onchange="renderBaoCao()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:var(--bg2)">
+        <option value="">-- Cả năm --</option>
+        <option value="01">Tháng 1</option><option value="02">Tháng 2</option><option value="03">Tháng 3</option>
+        <option value="04">Tháng 4</option><option value="05">Tháng 5</option><option value="06">Tháng 6</option>
+        <option value="07">Tháng 7</option><option value="08">Tháng 8</option><option value="09">Tháng 9</option>
+        <option value="10">Tháng 10</option><option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+      </select>
+      <button class="btn btn-green btn-sm" onclick="bcExportExcel()">📊 Xuất Excel</button>
+    </div>
+  </div>
+
+  <!-- Tổng quan -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="bc-cards"></div>
+
+  <!-- Doanh số theo nhân viên -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="dm-card" style="padding:16px">
+      <div class="dm-title" style="margin-bottom:12px">👤 Doanh Số Theo Nhân Viên</div>
+      <div id="bc-nv-chart"></div>
+    </div>
+    <div class="dm-card" style="padding:16px">
+      <div class="dm-title" style="margin-bottom:12px">📅 Doanh Số Theo Tháng</div>
+      <div id="bc-thang-chart"></div>
+    </div>
+  </div>
+
+  <!-- Top sản phẩm -->
+  <div class="dm-card" style="padding:16px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div class="dm-title">🏆 Top Sản Phẩm Bán Chạy</div>
+      <select id="bc-top-n" onchange="renderBaoCao()" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg2);margin-left:auto">
+        <option value="10">Top 10</option><option value="20">Top 20</option><option value="50">Top 50</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto"><table class="dm-tbl" id="bc-top-sp"></table></div>
+  </div>
+
+  <!-- Chi tiết từng đơn theo nhân viên -->
+  <div class="dm-card" style="padding:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div class="dm-title">📋 Chi Tiết Đơn Hàng</div>
+      <span id="bc-detail-count" style="font-size:12px;color:var(--t3)"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="dm-tbl" id="bc-detail-tbl">
+        <thead><tr><th>Ngày</th><th>Mã PXK</th><th>Khách Hàng</th><th>Nhân Viên</th><th>Mặt Hàng</th><th>SL</th><th>ĐVT</th><th class="tr">Doanh Thu</th></tr></thead>
+        <tbody id="bc-detail-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-cham-soc-kh" style="width:100%;box-sizing:border-box">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;width:100%">
+    <select id="cskh-filter" onchange="renderCSKH_CHU()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg2)">
+      <option value="all">👥 Tất cả khách hàng</option>
+      <option value="urgent">🔴 Cần chăm sóc ngay (&gt;30 ngày)</option>
+      <option value="warn">🟡 Sắp cần chăm sóc (15–30 ngày)</option>
+      <option value="new">🆕 Chưa có đơn hàng</option>
+      <option value="good">🟢 Đang hoạt động (&lt;15 ngày)</option>
+    </select>
+    <select id="cskh-nv-chu" onchange="renderCSKH_CHU()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg2)">
+      <option value="">-- Tất cả nhân viên --</option>
+    </select>
+    <input type="text" id="cskh-search-chu" placeholder="🔍 Tìm khách hàng..." oninput="renderCSKH_CHU()"
+      style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;flex:1;min-width:160px">
+    <span id="cskh-count-chu" style="font-size:12px;color:var(--t3);white-space:nowrap"></span>
+  </div>
+  <div id="cskh-overview-chu" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;width:100%"></div>
+  <div id="cskh-list-chu" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:100%;align-items:start"></div>
+</div>
+
+<div class="page" id="page-thung-rac">
+  <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+    <div style="font-size:14px;font-weight:700;color:var(--t1)">🗑️ Thùng Rác</div>
+    <div style="font-size:12.5px;color:var(--t3);margin-left:4px">Items bị xóa sẽ tự động xóa vĩnh viễn sau 30 ngày</div>
+    <div style="font-size:12px;color:#6b7280;font-style:italic;margin-left:auto">⚠️ Chỉ được phép khôi phục</div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+    <button class="btn btn-outline btn-sm trash-filter-btn active" onclick="trashFilter('all',this)">Tất cả</button>
+    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('pxk',this)">📋 PXK</button>
+    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('baoGia',this)">📝 Báo Giá</button>
+    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('pnk',this)">📦 PNK</button>
+    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('hoaDon',this)">🧾 Hóa Đơn</button>
+    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('sanPham',this)">📦 Sản Phẩm</button>
+    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('khachHang',this)">👤 Khách Hàng</button>
+    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('nhaCungCap',this)">🏭 Nhà CC</button>
+  </div>
+
+  <!-- Bảng thùng rác -->
+  <div style="background:var(--card);border-radius:var(--rl);box-shadow:var(--sh);border:1px solid var(--border);overflow:hidden">
+    <table class="data-tbl" id="trash-table">
+      <thead>
+        <tr>
+          <th style="width:36px"><input type="checkbox" id="trash-chk-all" onchange="trashCheckAll(this)"></th>
+          <th>Loại</th>
+          <th>Mã / Tên</th>
+          <th>Thông Tin</th>
+          <th>Ngày Xóa</th>
+          <th>Còn lại</th>
+          <th style="width:160px">Thao Tác</th>
+        </tr>
+      </thead>
+      <tbody id="trash-tbody"></tbody>
+    </table>
+  </div>
+  <div id="trash-empty-msg" style="display:none;text-align:center;padding:48px;color:var(--t3)">
+    <div style="font-size:48px;margin-bottom:12px">🗑️</div>
+    <div style="font-size:15px;font-weight:600">Thùng rác trống</div>
+    <div style="font-size:12.5px;margin-top:4px">Không có mục nào bị xóa</div>
+  </div>
+
+  <!-- Action bar khi chọn nhiều -->
+  <div id="trash-action-bar" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 18px;box-shadow:0 8px 32px rgba(0,0,0,.15);display:flex;gap:10px;align-items:center;z-index:100">
+    <span id="trash-selected-count" style="font-size:13px;font-weight:600;color:var(--t2)">0 mục đã chọn</span>
+    <button class="btn btn-green btn-sm" onclick="trashRestoreSelected()">↩ Khôi Phục</button>
+    <button class="btn btn-red btn-sm" onclick="trashDeleteSelected()">🗑 Xóa Vĩnh Viễn</button>
+    <button class="btn btn-outline btn-sm" onclick="trashClearSelection()">✕ Bỏ Chọn</button>
+  </div>
+</div>
 </div><!-- end main -->
 
 <!-- ====== MODALS ====== -->
@@ -1136,6 +1269,491 @@ select{font-family:inherit}
 <!-- Toast -->
 <div id="toast"></div>
 
+
+<!-- ========== THÙNG RÁC ========== -->
+
+
+<!-- ========== THÙNG RÁC ========== -->
+<!-- ====== MODALS ====== -->
+<!-- Modal PXK -->
+<div class="mo" id="mo-pxk">
+  <div class="mo-box">
+    <div class="mo-head"><h2 id="mo-pxk-title">Lập Phiếu Xuất Kho</h2><button class="mo-close" onclick="closeMo('mo-pxk')">×</button></div>
+    <div class="mo-body">
+      <div class="form-grid fg3">
+        <div class="fg">
+          <label>Khách Hàng <span class="req">*</span></label>
+          <div class="ac-wrap" id="pxk-kh-wrap">
+            <input type="text" id="pxk-kh-input" placeholder="Gõ tên hoặc mã KH để tìm…" autocomplete="off" oninput="acSearch('pxk-kh',this.value)" onfocus="acSearch('pxk-kh',this.value)">
+            <div class="ac-drop" id="pxk-kh-drop"></div>
+            <input type="hidden" id="pxk-kh">
+          </div>
+        </div>
+        <div class="fg"><label>Ngày Thực Hiện <span class="req">*</span></label><input type="date" id="pxk-ngay"></div>
+        <div class="fg"><label>Kinh Doanh Phụ Trách</label><select id="pxk-kd"></select></div>
+      </div>
+      <div class="form-grid fg2">
+        <div class="fg"><label>Địa Chỉ Bàn Giao <small style="color:var(--t3);font-weight:400">(tự điền theo KH, có thể sửa)</small></label><input type="text" id="pxk-diachi" placeholder="Chọn khách hàng để tự điền địa chỉ…"></div>
+        <div class="fg"><label>Hình Thức Thanh Toán</label><select id="pxk-httt"><option>Tiền Mặt</option><option>Chuyển Khoản</option><option selected>Công Nợ</option></select></div>
+      </div>
+      <div class="form-grid fg2">
+        <div class="fg"><label>Điện Thoại KH <small style="color:var(--t3);font-weight:400">(tự điền, có thể sửa)</small></label><input type="text" id="pxk-sdt" placeholder="Số điện thoại khách hàng…"></div>
+        <div class="fg"><label>Thuế Suất VAT</label><select id="pxk-vat" onchange="calcPXK()"><option value="0">0%</option><option value="5">5%</option><option value="8" selected>8%</option><option value="10">10% (Tiêu chuẩn)</option></select></div>
+      </div>
+      <div class="form-grid fg2">
+        <div class="fg"><label>Người Nhận <small style="color:var(--t3);font-weight:400">(phòng ban / tên người nhận)</small></label><input type="text" id="pxk-nguoinhan" placeholder="VD: Phòng Hành Chính – Ms. Lan…"></div>
+        <div class="fg"><label>Ghi Chú Nội Bộ</label><input type="text" id="pxk-ghichu" placeholder="Diễn giải, ghi chú đơn hàng…"></div>
+      </div>
+      <div class="sec-title">☰ Chi Tiết Danh Mục Hàng Hóa</div>
+      <div class="it-wrap">
+        <table class="it-tbl">
+          <thead><tr><th style="width:38%">Mặt Hàng</th><th style="width:70px;text-align:center">SL</th><th style="text-align:right">Đơn Giá</th><th style="width:80px;text-align:center">CK(%)</th><th style="text-align:right">Thành Tiền</th><th style="width:36px"></th></tr></thead>
+          <tbody id="pxk-items"></tbody>
+        </table>
+      </div>
+      <span class="add-row-lnk" onclick="addItemRow('pxk')">➕ Thêm Hàng</span>
+      <div class="totals-sec">
+        <div class="tot-row"><span>Cộng tiền hàng:</span><strong id="pxk-sub">0 ₫</strong></div>
+        <div class="tot-row" id="pxk-tax-row"><span id="pxk-vat-lbl">Thuế GTGT (8%):</span><strong id="pxk-tax">0 ₫</strong></div>
+        <div class="tot-final"><span>Tổng Thanh Toán:</span><span id="pxk-total">0 ₫</span></div>
+      </div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-pxk')">Hủy Bỏ</button>
+      <button class="btn btn-primary" onclick="savePXK()">💾 Lưu &amp; Ghi Sổ Ngay</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Bao Gia -->
+<div class="mo" id="mo-baogia">
+  <div class="mo-box">
+    <div class="mo-head"><h2 id="mo-bg-title">Tạo Báo Giá Khách Hàng</h2><button class="mo-close" onclick="closeMo('mo-baogia')">×</button></div>
+    <div class="mo-body">
+      <div class="form-grid fg3">
+        <div class="fg">
+          <label>Khách Hàng <span class="req">*</span></label>
+          <div class="ac-wrap">
+            <input type="text" id="bg-kh-input" placeholder="Gõ tên hoặc mã KH…" autocomplete="off" oninput="acSearch('bg-kh',this.value)" onfocus="acSearch('bg-kh',this.value)">
+            <div class="ac-drop" id="bg-kh-drop"></div>
+            <input type="hidden" id="bg-kh">
+          </div>
+        </div>
+        <div class="fg"><label>Ngày Báo Giá <span class="req">*</span></label><input type="date" id="bg-ngay"></div>
+        <div class="fg"><label>Hiệu Lực (ngày)</label><input type="number" id="bg-hieuluc" value="30" min="1"></div>
+      </div>
+      <div class="form-grid fg2">
+        <div class="fg"><label>Nhân Viên Phụ Trách</label><select id="bg-nv"></select></div>
+        <div class="fg"><label>Ghi Chú</label><input type="text" id="bg-ghichu" placeholder="Ghi chú…"></div>
+      </div>
+      <div class="sec-title">☰ Danh Mục Hàng Hóa Báo Giá</div>
+      <div class="it-wrap">
+        <table class="it-tbl">
+          <thead><tr><th style="width:38%">Mặt Hàng</th><th style="width:70px;text-align:center">SL</th><th style="text-align:right">Đơn Giá</th><th style="width:80px;text-align:center">CK(%)</th><th style="text-align:right">Thành Tiền</th><th style="width:36px"></th></tr></thead>
+          <tbody id="bg-items"></tbody>
+        </table>
+      </div>
+      <span class="add-row-lnk" onclick="addItemRow('bg')">➕ Thêm Hàng</span>
+      <div class="totals-sec">
+        <div class="tot-row"><span>Tổng tiền hàng:</span><strong id="bg-total">0 ₫</strong></div>
+      </div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-baogia')">Hủy Bỏ</button>
+      <button class="btn btn-primary" onclick="saveBaoGia()">💾 Lưu Báo Giá</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Thu No -->
+<div class="mo" id="mo-thuno">
+  <div class="mo-box mo-sm">
+    <div class="mo-head"><h2>Thu Tiền Công Nợ</h2><button class="mo-close" onclick="closeMo('mo-thuno')">×</button></div>
+    <div class="mo-body">
+      <div class="fg"><label>Khách Hàng</label><input type="text" id="thuno-kh" readonly></div>
+      <div class="fg"><label>Tổng Dư Nợ Hiện Tại</label><input type="text" id="thuno-duno" readonly style="color:var(--red);font-weight:700"></div>
+      <div class="fg"><label>Số Tiền Thu <span class="req">*</span></label><input type="number" id="thuno-sotien" placeholder="Nhập số tiền…" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
+      <div class="fg"><label>Hình Thức</label><select id="thuno-httt"><option>Tiền Mặt</option><option>Chuyển Khoản</option></select></div>
+      <div class="fg"><label>Ngày Thu</label><input type="date" id="thuno-ngay"></div>
+      <div class="fg"><label>Ghi Chú</label><input type="text" id="thuno-ghichu" placeholder="Ghi chú…"></div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-thuno')">Hủy</button>
+      <button class="btn btn-green" onclick="saveThuNo()">✅ Xác Nhận Thu Tiền</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Thu Gop -->
+<div class="mo" id="mo-thugop">
+  <div class="mo-box">
+    <div class="mo-head"><h2>Thu Tiền Gộp Đơn Nợ</h2><button class="mo-close" onclick="closeMo('mo-thugop')">×</button></div>
+    <div class="mo-body">
+      <div class="form-grid fg3" style="margin-bottom:12px">
+        <div class="fg"><label>Khách Hàng</label><select id="tg-kh" onchange="renderThuGopTable()"></select></div>
+        <div class="fg"><label>Ngày Thu</label><input type="date" id="tg-ngay"></div>
+        <div class="fg"><label>Hình Thức</label><select id="tg-httt"><option>Tiền Mặt</option><option>Chuyển Khoản</option></select></div>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:10px">
+        <table class="dtbl">
+          <thead><tr><th><input type="checkbox" onchange="toggleAllCheck('tg',this)"></th><th>Mã PXK</th><th>Ngày Lập</th><th class="tr">Tổng Tiền</th></tr></thead>
+          <tbody id="tg-tbody"></tbody>
+        </table>
+      </div>
+      <div class="tot-final" id="tg-total-row" style="justify-content:flex-end">Tổng thu: <span id="tg-total">0 ₫</span></div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-thugop')">Hủy</button>
+      <button class="btn btn-green" onclick="saveThuGop()">✅ Xác Nhận Thu Gộp</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal PNK -->
+<div class="mo" id="mo-pnk">
+  <div class="mo-box mo-xl">
+    <div class="mo-head"><h2 id="mo-pnk-title">Lập Phiếu Nhập Kho Vật Tư</h2><button class="mo-close" onclick="closeMo('mo-pnk')">×</button></div>
+    <div class="mo-body">
+      <div class="form-grid fg3">
+        <div class="fg">
+          <label>Nhà Cung Cấp <span class="req">*</span></label>
+          <div class="ac-wrap">
+            <input type="text" id="pnk-ncc-input" placeholder="Gõ tên hoặc mã NCC…" autocomplete="off"
+              oninput="acSearch('pnk-ncc',this.value)" onfocus="acSearch('pnk-ncc',this.value)">
+            <div class="ac-drop" id="pnk-ncc-drop"></div>
+            <input type="hidden" id="pnk-ncc">
+          </div>
+        </div>
+        <div class="fg"><label>Ngày Nhập <span class="req">*</span></label><input type="date" id="pnk-ngay"></div>
+        <div class="fg"><label>Hình Thức TT</label>
+          <select id="pnk-httt">
+            <option>Tiền Mặt</option>
+            <option>Chuyển Khoản</option>
+            <option selected>Công Nợ</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid fg2">
+        <div class="fg"><label>Địa Chỉ NCC <small style="color:var(--t3);font-weight:400">(tự điền, có thể sửa)</small></label>
+          <input type="text" id="pnk-diachi" placeholder="Địa chỉ nhà cung cấp…">
+        </div>
+        <div class="fg"><label>Điện Thoại NCC <small style="color:var(--t3);font-weight:400">(tự điền, có thể sửa)</small></label>
+          <input type="text" id="pnk-sdtncc" placeholder="Số điện thoại NCC…">
+        </div>
+      </div>
+      <div class="form-grid fg2">
+        <div class="fg"><label>Thuế Suất VAT</label>
+          <select id="pnk-vat" onchange="calcPNK()">
+            <option value="0">0%</option>
+            <option value="5">5%</option>
+            <option value="8" selected>8%</option>
+            <option value="10">10%</option>
+          </select>
+        </div>
+        <div class="fg"><label>Ghi Chú</label><input type="text" id="pnk-ghichu" placeholder="Ghi chú nhập kho…"></div>
+      </div>
+      <div class="sec-title">☰ Chi Tiết Hàng Nhập</div>
+      <div class="it-wrap">
+        <table class="it-tbl">
+          <thead><tr>
+            <th style="width:38%">Mặt Hàng</th>
+            <th style="width:60px;text-align:center">SL</th>
+            <th style="text-align:right">Đơn Giá</th>
+            <th style="width:70px;text-align:right">CK(%)</th>
+            <th style="text-align:right">Thành Tiền</th>
+            <th style="width:36px"></th>
+          </tr></thead>
+          <tbody id="pnk-items"></tbody>
+        </table>
+      </div>
+      <span class="add-row-lnk" onclick="addItemRow('pnk')">➕ Thêm Hàng</span>
+      <div class="totals-sec">
+        <div class="tot-row"><span>Cộng tiền hàng:</span><strong id="pnk-sub">0 ₫</strong></div>
+        <div class="tot-row" id="pnk-tax-row"><span id="pnk-vat-lbl">Thuế GTGT (8%):</span><strong id="pnk-tax">0 ₫</strong></div>
+        <div class="tot-final"><span>Tổng Tiền Nhập:</span><span id="pnk-total">0 ₫</span></div>
+      </div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-pnk')">Hủy Bỏ</button>
+      <button class="btn btn-primary" onclick="savePNK()">💾 Lưu &amp; Ghi Sổ Ngay</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Phieu Quy -->
+<div class="mo" id="mo-phieuquy">
+  <div class="mo-box mo-sm">
+    <div class="mo-head"><h2 id="pq-title">Phiếu Thu</h2><button class="mo-close" onclick="closeMo('mo-phieuquy')">×</button></div>
+    <div class="mo-body">
+      <div class="fg"><label>Ngày <span class="req">*</span></label><input type="date" id="pq-ngay"></div>
+      <div class="fg"><label>Diễn Giải <span class="req">*</span></label><input type="text" id="pq-dien" placeholder="Mô tả nội dung…"></div>
+      <div class="fg"><label>Số Tiền <span class="req">*</span></label><input type="number" id="pq-sotien" placeholder="0" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
+      <div class="fg"><label>Hình Thức</label><select id="pq-httt"><option>Tiền Mặt</option><option>Chuyển Khoản</option></select></div>
+      <div class="fg"><label>Khách Hàng / Đối Tượng</label><input type="text" id="pq-dt" placeholder="Tên đối tượng…"></div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-phieuquy')">Hủy</button>
+      <button class="btn btn-primary" id="pq-save-btn" onclick="savePhieuQuy()">💾 Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Danh Muc -->
+<div class="mo" id="mo-dm">
+  <div class="mo-box mo-sm">
+    <div class="mo-head"><h2 id="mo-dm-title">Thêm Mặt Hàng</h2><button class="mo-close" onclick="closeMo('mo-dm')">×</button></div>
+    <div class="mo-body" id="mo-dm-body"></div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-dm')">Hủy</button>
+      <button class="btn btn-primary" onclick="saveDM()">💾 Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Chi Tiết Công Nợ KH -->
+<div class="mo" id="mo-congno-detail">
+  <div class="mo-box" style="width:780px">
+    <div class="mo-head">
+      <div>
+        <h2 id="cn-detail-title">Chi Tiết Công Nợ</h2>
+        <div id="cn-detail-kh-info" style="font-size:12.5px;color:var(--t2);margin-top:2px"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:20px;font-weight:800;color:var(--red)" id="cn-detail-total"></div>
+        <button class="mo-close" onclick="closeMo('mo-congno-detail')">×</button>
+      </div>
+    </div>
+    <div class="mo-body" style="padding:0">
+      <!-- PXK TABLE WITH CHECKBOXES -->
+      <div style="overflow:hidden;border-radius:0">
+        <table class="dtbl" id="cn-detail-table">
+          <thead>
+            <tr style="background:#f8fafc">
+              <th style="width:36px"><input type="checkbox" id="cn-chk-all" onchange="cnCheckAll(this)"></th>
+              <th>Mã PXK</th>
+              <th>Ngày Lập</th>
+              <th class="tr">Tổng Tiền (+VAT)</th>
+              <th>Hình Thức TT</th>
+              <th>Trạng Thái HD</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="cn-detail-tbody"></tbody>
+        </table>
+      </div>
+      <!-- SELECTED SUMMARY + INLINE THU TIEN -->
+      <div id="cn-thu-panel" style="display:none;padding:14px 18px;border-top:2px solid var(--blue-l);background:#f0f9ff">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--blue);margin-bottom:2px">Số tiền cần thu (đã chọn)</div>
+            <div style="font-size:22px;font-weight:800;color:var(--blue)" id="cn-selected-amt">0 ₫</div>
+          </div>
+          <div style="flex:1;min-width:140px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:4px">Hình Thức Thu</div>
+            <select id="cn-thu-httt" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;font-family:inherit">
+              <option>Tiền Mặt</option><option>Chuyển Khoản</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:130px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:4px">Ngày Thu</div>
+            <input type="date" id="cn-thu-ngay" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;font-family:inherit">
+          </div>
+          <div style="flex-shrink:0;align-self:flex-end">
+            <button class="btn btn-green" style="font-size:13px;padding:8px 20px" onclick="cnThuSelected()">
+              💰 Thu Tiền Nợ
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- PAID ROW -->
+      <div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#fafafa">
+        <div style="font-size:12.5px;color:var(--t2)">Tiền đã thu:</div>
+        <div style="font-weight:700;color:var(--green);font-size:14px" id="cn-detail-paid">0 ₫</div>
+      </div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-congno-detail')">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal In Hóa Đơn VAT -->
+<div class="mo" id="mo-hd-print">
+  <div class="mo-box mo-lg">
+    <div class="mo-head"><h2>Xem &amp; In Hóa Đơn VAT</h2><button class="mo-close" onclick="closeMo('mo-hd-print')">×</button></div>
+    <div class="mo-body" id="mo-hd-print-body"></div>
+    <div class="mo-foot no-print">
+      <button class="btn btn-outline" onclick="closeMo('mo-hd-print')">Đóng</button>
+      <button class="btn btn-green" onclick="printHoaDon()">🖨️ In Hóa Đơn</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ký Hóa Đơn -->
+<div class="mo" id="mo-ky-hd">
+  <div class="mo-box mo-sm">
+    <div class="mo-head"><h2>✍️ Ký Duyệt Hóa Đơn</h2><button class="mo-close" onclick="closeMo('mo-ky-hd')">×</button></div>
+    <div class="mo-body">
+      <div style="background:#fef9ec;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12.5px;line-height:1.6;color:#92400e">
+        ⚠️ <strong>Lưu ý:</strong> Sau khi ký duyệt, hóa đơn sẽ chuyển sang trạng thái <strong>Đã Ký</strong> và toàn bộ các PXK thuộc bảng kê này sẽ bị <strong>khóa chặt</strong>, không thể sửa hoặc xóa.
+      </div>
+      <div class="fg"><label>Tên Người Ký <span class="req">*</span></label><input id="ky-ten" placeholder="Nhập họ tên người ký…"></div>
+      <div class="fg"><label>Chức Vụ</label><input id="ky-chucvu" placeholder="Ví dụ: Giám đốc, Kế toán trưởng…" value="Thủ Trưởng Đơn Vị"></div>
+      <div class="fg"><label>Ngày Ký</label><input type="date" id="ky-ngay"></div>
+      <div class="fg"><label>Ghi Chú</label><input id="ky-ghichu" placeholder="Ghi chú thêm (nếu có)…"></div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-ky-hd')">Hủy</button>
+      <button class="btn btn-primary" onclick="kyHoaDon()">✅ Xác Nhận Ký Duyệt</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Bulk Import Excel -->
+<div class="mo" id="mo-bulk">
+  <div class="mo-box" style="width:860px;max-height:95vh">
+    <div class="mo-head">
+      <div>
+        <h2>📥 Công Cụ Nhập Liệu Excel Cấp Tốc</h2>
+        <div style="font-size:11.5px;color:var(--t2);margin-top:2px">Dán dữ liệu từ Excel trực tiếp – hỗ trợ 2000+ dòng</div>
+      </div>
+      <button class="mo-close" onclick="closeMo('mo-bulk')">×</button>
+    </div>
+    <div class="mo-body">
+      <!-- TAB CHỌN LOẠI -->
+      <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px">
+        <div class="bulk-tab active" onclick="switchBulkTab('kh')" id="btab-kh" style="padding:8px 18px;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--blue);margin-bottom:-2px;color:var(--blue)">👥 Khách Hàng</div>
+        <div class="bulk-tab" onclick="switchBulkTab('sp')" id="btab-sp" style="padding:8px 18px;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--t2)">🛍️ Sản Phẩm</div>
+        <div class="bulk-tab" onclick="switchBulkTab('ncc')" id="btab-ncc" style="padding:8px 18px;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--t2)">🏭 Nhà Cung Cấp</div>
+      </div>
+
+      <!-- HƯỚNG DẪN -->
+      <div id="bulk-guide" style="background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:12px;line-height:1.7">
+        <strong>📋 Hướng dẫn:</strong> Mở file Excel → Chọn vùng dữ liệu → Copy (Ctrl+C) → Dán vào ô bên dưới (Ctrl+V)<br>
+        <span id="bulk-col-guide" style="color:var(--blue)"></span>
+      </div>
+
+      <!-- TEMPLATE DOWNLOAD -->
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+        <button class="btn btn-outline btn-sm" onclick="bulkDownloadTemplate()">⬇️ Tải Template Excel mẫu</button>
+        <span style="font-size:11.5px;color:var(--t3)">hoặc</span>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('bulk-file').click()">📂 Chọn file CSV/Excel</button>
+        <input type="file" id="bulk-file" accept=".csv,.txt" style="display:none" onchange="bulkReadFile(this)">
+        <span style="font-size:11.5px;color:var(--t3)">hoặc dán thẳng bên dưới</span>
+      </div>
+
+      <!-- PASTE AREA -->
+      <textarea id="bulk-paste" rows="10"
+        style="width:100%;border:2px dashed var(--border);border-radius:8px;padding:12px;font-size:12.5px;font-family:monospace;outline:none;resize:vertical;line-height:1.6;transition:border-color .2s"
+        placeholder="Dán dữ liệu từ Excel vào đây (Ctrl+V)…&#10;&#10;Mỗi dòng 1 bản ghi, các cột cách nhau bằng Tab (copy từ Excel)&#10;Dòng đầu tiên có thể là tiêu đề (sẽ tự bỏ qua)"
+        oninput="bulkPreview()" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+
+      <!-- PREVIEW -->
+      <div id="bulk-preview-wrap" style="display:none;margin-top:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:12.5px;font-weight:700" id="bulk-preview-count"></div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--t2)">
+              <input type="checkbox" id="bulk-has-header" checked onchange="bulkPreview()"> Dòng đầu là tiêu đề
+            </label>
+          </div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto">
+          <table class="dtbl" id="bulk-preview-table">
+            <thead id="bulk-preview-head"></thead>
+            <tbody id="bulk-preview-body"></tbody>
+          </table>
+        </div>
+        <!-- COL MAPPING -->
+        <div id="bulk-mapping" style="margin-top:12px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;margin-bottom:10px">Ghép cột dữ liệu</div>
+          <div id="bulk-mapping-fields" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
+        </div>
+      </div>
+
+      <!-- RESULT -->
+      <div id="bulk-result" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600"></div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-bulk')">Đóng</button>
+      <button class="btn btn-orange btn-sm" onclick="bulkClear()">🗑 Xóa dữ liệu paste</button>
+      <button class="btn btn-primary" id="bulk-import-btn" onclick="bulkDoImport()" style="min-width:140px">⚡ Nhập Ngay</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Chi Tiết Nợ NCC -->
+<div class="mo" id="mo-ncc-debt">
+  <div class="mo-box" style="width:780px">
+    <div class="mo-head">
+      <div>
+        <h2 id="ncc-debt-title">Chi Tiết Nợ NCC</h2>
+        <div id="ncc-debt-info" style="font-size:12.5px;color:var(--t2);margin-top:2px"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:20px;font-weight:800;color:var(--red)" id="ncc-debt-total"></div>
+        <button class="mo-close" onclick="closeMo('mo-ncc-debt')">×</button>
+      </div>
+    </div>
+    <div class="mo-body" style="padding:0">
+      <div style="overflow:hidden">
+        <table class="dtbl">
+          <thead><tr style="background:#f8fafc">
+            <th style="width:36px"><input type="checkbox" id="ncc-chk-all" onchange="nccCheckAll(this)"></th>
+            <th>Mã PNK</th><th>Ngày Nhập</th><th class="tr">Tổng Tiền</th><th>Hình Thức TT</th><th style="width:40px"></th>
+          </tr></thead>
+          <tbody id="ncc-debt-tbody"></tbody>
+        </table>
+      </div>
+      <!-- THANH TOAN PANEL -->
+      <div id="ncc-tt-panel" style="display:none;padding:14px 18px;border-top:2px solid #dcfce7;background:#f0fdf4">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--green);margin-bottom:2px">Số tiền thanh toán (đã chọn)</div>
+            <div style="font-size:22px;font-weight:800;color:var(--green)" id="ncc-tt-amt">0 ₫</div>
+          </div>
+          <div style="flex:1;min-width:140px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:4px">Hình Thức TT</div>
+            <select id="ncc-tt-httt" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;font-family:inherit">
+              <option>Tiền Mặt</option><option>Chuyển Khoản</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:130px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:4px">Ngày TT</div>
+            <input type="date" id="ncc-tt-ngay" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;font-family:inherit">
+          </div>
+          <div style="flex-shrink:0;align-self:flex-end">
+            <button class="btn btn-green" style="font-size:13px;padding:8px 20px" onclick="nccThanhToanSelected()">💸 Thanh Toán</button>
+          </div>
+        </div>
+      </div>
+      <div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#fafafa">
+        <div style="font-size:12.5px;color:var(--t2)">Đã thanh toán:</div>
+        <div style="font-weight:700;color:var(--green);font-size:14px" id="ncc-debt-paid">0 ₫</div>
+      </div>
+    </div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-ncc-debt')">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirm -->
+<div class="mo" id="mo-confirm">
+  <div class="mo-box mo-sm">
+    <div class="mo-head"><h2 id="confirm-title">Xác Nhận</h2><button class="mo-close" onclick="closeMo('mo-confirm')">×</button></div>
+    <div class="mo-body"><p id="confirm-msg" style="font-size:14px;line-height:1.6"></p></div>
+    <div class="mo-foot">
+      <button class="btn btn-outline" onclick="closeMo('mo-confirm')">Hủy</button>
+      <button class="btn btn-red" id="confirm-ok">Xác Nhận Xóa</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+
 <script>
 // ============ DATA STORE ============
 const DB = {
@@ -1257,13 +1875,14 @@ function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  const map={dashboard:0,'ban-hang':1,'nhap-hang':2,'so-quy':3,'danh-muc':4,'dong-bo':5};
+  const map={dashboard:0,'ban-hang':1,'nhap-hang':2,'so-quy':3,'danh-muc':4,'bao-cao':5,'cham-soc-kh':6,'dong-bo':7,'thung-rac':8};
   const idx=map[id];
   if(idx!==undefined) document.querySelectorAll('.nav-item')[idx].classList.add('active');
   if(id==='dashboard') renderDashboard();
   if(id==='ban-hang'){renderPXKTable();renderBaoGiaTable();renderCongNoTable();}
   if(id==='nhap-hang'){renderPNKTable();renderNCCCongNo();}
   if(id==='bao-cao'){initBaoCao();}
+  if(id==='cham-soc-kh'){initChamSocKH_CHU();}
   if(id==='so-quy'){renderQuyCards();renderQuyTable();}
   if(id==='danh-muc'){renderAllDM();}
   if(id==='dong-bo'){renderSyncPage();}
@@ -4236,6 +4855,192 @@ function bcExportExcel(){
   toast(`✅ Đã xuất ${list.length} đơn – ${label}`);
 }
 
+
+// ============================================================
+// CHĂM SÓC KHÁCH HÀNG – MÁY CHỦ (full quyền)
+// ============================================================
+function initChamSocKH_CHU(){
+  const sel=document.getElementById('cskh-nv-chu');
+  if(sel){
+    sel.innerHTML='<option value="">-- Tất cả nhân viên --</option>'
+      +DB.nhanVien.map(n=>`<option value="${n.id}">(${n.ma}) ${n.ten}</option>`).join('');
+  }
+  renderCSKH_CHU();
+}
+
+function getKHInfo_CHU(kh){
+  const pxkList=DB.pxk.filter(p=>!p._deleted&&p.khId===kh.id&&p.soSach==='Ghi Số').sort((a,b)=>b.ngay.localeCompare(a.ngay));
+  const lastDate=pxkList[0]?.ngay||null;
+  const today=todayStr();
+  const daysSince=lastDate?Math.floor((new Date(today)-new Date(lastDate))/(1000*60*60*24)):null;
+  let tongDT=0;pxkList.forEach(p=>{const{total}=calcPXKTotals(p.items,p.vat);tongDT+=total;});
+  const nvCount={};pxkList.forEach(p=>{if(p.kdId)nvCount[p.kdId]=(nvCount[p.kdId]||0)+1;});
+  const mainNvId=kh._nvChinh||Object.keys(nvCount).sort((a,b)=>nvCount[b]-nvCount[a])[0]||null;
+  const mainNv=mainNvId?getNV(mainNvId):null;
+  let status,statusColor,statusIcon,statusNote;
+  if(daysSince===null){status='new';statusColor='#6b7280';statusIcon='🆕';statusNote='Chưa có đơn hàng';}
+  else if(daysSince<=15){status='good';statusColor='#16a34a';statusIcon='🟢';statusNote='Đang hoạt động ('+daysSince+' ngày trước)';}
+  else if(daysSince<=30){status='warn';statusColor='#d97706';statusIcon='🟡';statusNote='Sắp cần chăm sóc ('+daysSince+' ngày)';}
+  else{status='urgent';statusColor='#dc2626';statusIcon='🔴';statusNote='⚠️ Cần chăm sóc! ('+daysSince+' ngày chưa mua)';}
+  return{pxkList,lastDate,daysSince,tongDT,mainNv,mainNvId,status,statusColor,statusIcon,statusNote};
+}
+
+function renderCSKH_CHU(){
+  const filter=document.getElementById('cskh-filter')?.value||'all';
+  const nvFilter=document.getElementById('cskh-nv-chu')?.value||'';
+  const q=(document.getElementById('cskh-search-chu')?.value||'').toLowerCase();
+
+  // KH đã có đơn hoặc được gán NV
+  const khHasOrder=new Set(
+    DB.pxk.filter(p=>!p._deleted&&p.soSach==='Ghi Số').map(p=>p.khId)
+  );
+  DB.khachHang.filter(k=>!k._deleted&&k._nvChinh).forEach(k=>khHasOrder.add(k.id));
+
+  // Chọn scope theo filter
+  let baseKH;
+  if(filter==='new'){
+    baseKH=DB.khachHang.filter(k=>!k._deleted&&!khHasOrder.has(k.id));
+  } else if(q){
+    baseKH=DB.khachHang.filter(k=>!k._deleted);
+  } else {
+    baseKH=DB.khachHang.filter(k=>!k._deleted&&khHasOrder.has(k.id));
+  }
+  const allKH=baseKH.map(k=>({kh:k,...getKHInfo_CHU(k)}));
+
+  // Counts luôn tính từ KH có đơn
+  const withOrder=DB.khachHang.filter(k=>!k._deleted&&khHasOrder.has(k.id));
+  const counts={urgent:0,warn:0,good:0};
+  withOrder.forEach(k=>{const i=getKHInfo_CHU(k);counts[i.status]=(counts[i.status]||0)+1;});
+  const newCount=DB.khachHang.filter(k=>!k._deleted&&!khHasOrder.has(k.id)).length;
+
+  document.getElementById('cskh-overview-chu').innerHTML=[
+    {icon:'🔴',label:'Cần chăm sóc ngay',val:counts.urgent||0,color:'#fef2f2',border:'#fca5a5',text:'#dc2626',key:'urgent'},
+    {icon:'🟡',label:'Sắp cần chăm sóc',val:counts.warn||0,color:'#fffbeb',border:'#fcd34d',text:'#d97706',key:'warn'},
+    {icon:'🟢',label:'Đang hoạt động',val:counts.good||0,color:'#f0fdf4',border:'#86efac',text:'#16a34a',key:'good'},
+    {icon:'🆕',label:'Chưa có đơn',val:newCount,color:'#f8fafc',border:'#cbd5e1',text:'#475569',key:'new'},
+  ].map(s=>`<div style="background:${s.color};border:2px solid ${filter===s.key?s.text:s.border};border-radius:10px;padding:12px 14px;cursor:pointer" onclick="document.getElementById('cskh-filter').value='${s.key}';renderCSKH_CHU()">
+    <div style="font-size:20px;margin-bottom:4px">${s.icon}</div>
+    <div style="font-size:20px;font-weight:800;color:${s.text};line-height:1.1">${s.val}</div>
+    <div style="font-size:11px;color:${s.text};font-weight:600;margin-top:3px">${s.label}</div>
+  </div>`).join('');
+
+  let filtered=allKH;
+  if(filter!=='new'&&filter!=='all') filtered=filtered.filter(x=>x.status===filter);
+  if(nvFilter) filtered=filtered.filter(x=>x.mainNvId===nvFilter);
+  if(q) filtered=filtered.filter(x=>x.kh.ten.toLowerCase().includes(q)||(x.kh.ma||'').toLowerCase().includes(q)||(x.kh.sdt||'').includes(q));
+  if(filter!=='new'){const ord={urgent:0,warn:1,good:2,new:3};filtered.sort((a,b)=>ord[a.status]-ord[b.status]||(b.daysSince??-1)-(a.daysSince??-1));}
+
+  const cntEl=document.getElementById('cskh-count-chu');
+  if(cntEl) cntEl.textContent=filtered.length+' khách';
+  const el=document.getElementById('cskh-list-chu');
+  if(!filtered.length){
+    el.style.display='flex';
+    el.innerHTML=`<div style="text-align:center;padding:48px;color:var(--t3);width:100%"><div style="font-size:36px">👥</div><div style="margin-top:8px">Không có khách hàng nào</div></div>`;
+    return;
+  }
+  el.style.display='grid';
+  el.innerHTML=filtered.map(({kh,lastDate,tongDT,mainNv,status,statusColor,statusIcon,statusNote})=>{
+    const no=getKHDuNo(kh.id);
+    const zLink=kh.sdt?`https://zalo.me/${kh.sdt.replace(/[^0-9]/g,'')}`:'https://chat.zalo.me';
+    const initial=(kh.ten||'K').split(' ').slice(-1)[0]?.charAt(0)||'K';
+    const pxkCount=DB.pxk.filter(p=>!p._deleted&&p.khId===kh.id&&p.soSach==='Ghi Số').length;
+    return `<div style="border:1px solid var(--border);border-left:4px solid ${statusColor};border-radius:10px;padding:12px 14px;background:var(--bg2);display:flex;gap:10px;align-items:flex-start">
+      <div style="width:38px;height:38px;min-width:38px;background:linear-gradient(135deg,${statusColor},${statusColor}88);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px">${initial}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px">
+          <span style="font-weight:700;font-size:13px">${kh.ten}</span>
+          <span style="font-size:10px;color:var(--t3)">${kh.ma}</span>
+          <span style="background:${statusColor}22;color:${statusColor};font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px">${statusIcon} ${statusNote}</span>
+          ${no>0?`<span style="background:#fef2f2;color:#dc2626;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px">Nợ: ${fmt(no)} ₫</span>`:''}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--t2);margin-bottom:7px">
+          ${kh.sdt?`<span>📞 ${kh.sdt}</span>`:''}
+          ${lastDate?`<span>🗓️ <strong>${lastDate}</strong></span>`:'<span style="color:var(--t3)">🗓️ Chưa có đơn</span>'}
+          <span>📦 <strong>${pxkCount}</strong></span>
+          <span>💰 <strong style="color:var(--blue)">${fmt(tongDT)} ₫</strong></span>
+          ${mainNv?`<span>👤 <strong style="color:#7c3aed">${mainNv.ten}</strong></span>`:`<span style="color:#f59e0b">👤 Chưa phân NV</span>`}
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          ${kh.sdt?`<a href="${zLink}" target="_blank" class="btn btn-sm" style="background:#0068ff;color:#fff;border:none;font-size:11px;padding:4px 8px">💬 Zalo</a>`:''}
+          ${kh.sdt?`<a href="tel:${kh.sdt.replace(/[^0-9]/g,'')}" class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 8px">📞 Gọi</a>`:''}
+          <button onclick="cskhTaoBG_CHU('${kh.id}')" class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 8px">+ BG</button>
+          <button onclick="cskhTaoPXK_CHU('${kh.id}')" class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 8px">+ PXK</button>
+          <button onclick="cskhGanNV_CHU('${kh.id}')" class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 8px;color:#7c3aed;border-color:#7c3aed">👤 Gán NV</button>
+          <button onclick="xemLichSuKH_CHU('${kh.id}')" class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 8px">📋 LS</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cskhTaoBG_CHU(khId){
+  // Switch to bán hàng tab first
+  showPage('ban-hang');
+  setTimeout(()=>{
+    const bgTab=document.querySelector('[onclick*="baogia"]');
+    document.querySelectorAll('.sub-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.sub-page').forEach(p=>p.style.display='none');
+    const bgTabEl=document.getElementById('tab-baogia');if(bgTabEl)bgTabEl.classList.add('active');
+    const bgPageEl=document.getElementById('sub-baogia');if(bgPageEl)bgPageEl.style.display='';
+    openModalBaoGia(null);
+    setTimeout(()=>acSetKH('bg-kh',khId),300);
+  },100);
+}
+function cskhTaoPXK_CHU(khId){
+  showPage('ban-hang');
+  setTimeout(()=>{
+    openModalPXK(null);
+    setTimeout(()=>acSetKH('pxk-kh',khId),300);
+  },100);
+}
+
+function cskhGanNV_CHU(khId){
+  const kh=DB.khachHang.find(x=>x.id===khId);if(!kh)return;
+  const opts=DB.nhanVien.map(n=>`<option value="${n.id}"${kh._nvChinh===n.id?' selected':''}>(${n.ma}) ${n.ten}</option>`).join('');
+  document.getElementById('confirm-title').textContent='Gán Nhân Viên Phụ Trách';
+  document.getElementById('confirm-msg').innerHTML=`<div style="font-size:13px;margin-bottom:8px"><strong>${kh.ten}</strong> – ${kh.ma}</div>
+    <select id="ganNV-sel-chu" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+      <option value="">-- Không phân công --</option>${opts}
+    </select>`;
+  document.getElementById('confirm-ok').textContent='✅ Lưu Gán NV';
+  document.getElementById('confirm-ok').onclick=()=>{
+    const nvId=document.getElementById('ganNV-sel-chu')?.value||'';
+    kh._nvChinh=nvId||undefined; kh.updatedAt=Date.now();
+    if(window._autoSave)window._autoSave();
+    if(typeof gdPush==='function'&&gdGetCfg().scriptUrl)setTimeout(()=>gdPush(true),300);
+    closeMo('mo-confirm');renderCSKH_CHU();
+    const nv=nvId?getNV(nvId):{};
+    toast('✅ Đã gán '+(nv.ten||'(bỏ phân công)')+' cho '+kh.ten);
+  };
+  openMo('mo-confirm');
+}
+
+function xemLichSuKH_CHU(khId){
+  const kh=DB.khachHang.find(x=>x.id===khId);if(!kh)return;
+  const list=DB.pxk.filter(p=>!p._deleted&&p.khId===khId&&p.soSach==='Ghi Số').sort((a,b)=>b.ngay.localeCompare(a.ngay));
+  const rows=list.map(p=>{const{total}=calcPXKTotals(p.items,p.vat);const nv=getNV(p.kdId);
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 10px;font-size:12px">${p.ngay}</td>
+      <td style="padding:7px 10px;font-size:12px;color:var(--blue);font-weight:700">${p.ma}</td>
+      <td style="padding:7px 10px;font-size:12px">${nv.ten||p.kdId}</td>
+      <td style="padding:7px 10px;font-size:12px;text-align:right;font-weight:700;color:var(--blue)">${fmt(total)} ₫</td>
+    </tr>`;}).join('');
+  document.getElementById('confirm-title').textContent='Lịch Sử – '+kh.ten;
+  document.getElementById('confirm-msg').innerHTML=`<div style="max-height:320px;overflow-y:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg3)">
+        <th style="padding:7px 10px;font-size:11px;text-align:left">Ngày</th>
+        <th style="padding:7px 10px;font-size:11px;text-align:left">Mã PXK</th>
+        <th style="padding:7px 10px;font-size:11px;text-align:left">Nhân Viên</th>
+        <th style="padding:7px 10px;font-size:11px;text-align:right">Tổng tiền</th>
+      </tr></thead>
+      <tbody>${rows||'<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--t3)">Chưa có đơn nào</td></tr>'}</tbody>
+    </table></div>`;
+  document.getElementById('confirm-ok').textContent='Đóng';
+  document.getElementById('confirm-ok').onclick=()=>closeMo('mo-confirm');
+  openMo('mo-confirm');
+}
+
 function renderDashboard(){
   // stat cards
   let tongDT=0;
@@ -4963,218 +5768,5 @@ function tonResetAll(){
 
 })();
 </script>
-
-<!-- ========== THÙNG RÁC ========== -->
-<div class="page" id="page-bao-cao">
-  <div style="padding:0 0 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <h2 style="font-size:17px;font-weight:700;margin:0">📈 Báo Cáo Doanh Số</h2>
-    <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
-      <select id="bc-nv" onchange="renderBaoCao()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:var(--bg2)">
-        <option value="">-- Tất cả nhân viên --</option>
-      </select>
-      <select id="bc-nam" onchange="renderBaoCao()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:var(--bg2)"></select>
-      <select id="bc-thang" onchange="renderBaoCao()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:var(--bg2)">
-        <option value="">-- Cả năm --</option>
-        <option value="01">Tháng 1</option><option value="02">Tháng 2</option><option value="03">Tháng 3</option>
-        <option value="04">Tháng 4</option><option value="05">Tháng 5</option><option value="06">Tháng 6</option>
-        <option value="07">Tháng 7</option><option value="08">Tháng 8</option><option value="09">Tháng 9</option>
-        <option value="10">Tháng 10</option><option value="11">Tháng 11</option><option value="12">Tháng 12</option>
-      </select>
-      <button class="btn btn-green btn-sm" onclick="bcExportExcel()">📊 Xuất Excel</button>
-    </div>
-  </div>
-
-  <!-- Tổng quan -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="bc-cards"></div>
-
-  <!-- Doanh số theo nhân viên -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-    <div class="dm-card" style="padding:16px">
-      <div class="dm-title" style="margin-bottom:12px">👤 Doanh Số Theo Nhân Viên</div>
-      <div id="bc-nv-chart"></div>
-    </div>
-    <div class="dm-card" style="padding:16px">
-      <div class="dm-title" style="margin-bottom:12px">📅 Doanh Số Theo Tháng</div>
-      <div id="bc-thang-chart"></div>
-    </div>
-  </div>
-
-  <!-- Top sản phẩm -->
-  <div class="dm-card" style="padding:16px;margin-bottom:16px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-      <div class="dm-title">🏆 Top Sản Phẩm Bán Chạy</div>
-      <select id="bc-top-n" onchange="renderBaoCao()" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg2);margin-left:auto">
-        <option value="10">Top 10</option><option value="20">Top 20</option><option value="50">Top 50</option>
-      </select>
-    </div>
-    <div style="overflow-x:auto"><table class="dm-tbl" id="bc-top-sp"></table></div>
-  </div>
-
-  <!-- Chi tiết từng đơn theo nhân viên -->
-  <div class="dm-card" style="padding:16px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-      <div class="dm-title">📋 Chi Tiết Đơn Hàng</div>
-      <span id="bc-detail-count" style="font-size:12px;color:var(--t3)"></span>
-    </div>
-    <div style="overflow-x:auto">
-      <table class="dm-tbl" id="bc-detail-tbl">
-        <thead><tr><th>Ngày</th><th>Mã PXK</th><th>Khách Hàng</th><th>Nhân Viên</th><th>Mặt Hàng</th><th>SL</th><th>ĐVT</th><th class="tr">Doanh Thu</th></tr></thead>
-        <tbody id="bc-detail-tbody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<div class="page" id="page-thung-rac">
-  <div class="toolbar" style="flex-wrap:wrap;gap:8px">
-    <div style="font-size:14px;font-weight:700;color:var(--t1)">🗑️ Thùng Rác</div>
-    <div style="font-size:12.5px;color:var(--t3);margin-left:4px">Items bị xóa sẽ tự động xóa vĩnh viễn sau 30 ngày</div>
-    <div style="font-size:12px;color:#6b7280;font-style:italic;margin-left:auto">⚠️ Chỉ được phép khôi phục</div>
-  </div>
-
-  <!-- Filter tabs -->
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-    <button class="btn btn-outline btn-sm trash-filter-btn active" onclick="trashFilter('all',this)">Tất cả</button>
-    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('pxk',this)">📋 PXK</button>
-    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('baoGia',this)">📝 Báo Giá</button>
-    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('pnk',this)">📦 PNK</button>
-    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('hoaDon',this)">🧾 Hóa Đơn</button>
-    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('sanPham',this)">📦 Sản Phẩm</button>
-    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('khachHang',this)">👤 Khách Hàng</button>
-    <button class="btn btn-outline btn-sm trash-filter-btn" onclick="trashFilter('nhaCungCap',this)">🏭 Nhà CC</button>
-  </div>
-
-  <!-- Bảng thùng rác -->
-  <div style="background:var(--card);border-radius:var(--rl);box-shadow:var(--sh);border:1px solid var(--border);overflow:hidden">
-    <table class="data-tbl" id="trash-table">
-      <thead>
-        <tr>
-          <th style="width:36px"><input type="checkbox" id="trash-chk-all" onchange="trashCheckAll(this)"></th>
-          <th>Loại</th>
-          <th>Mã / Tên</th>
-          <th>Thông Tin</th>
-          <th>Ngày Xóa</th>
-          <th>Còn lại</th>
-          <th style="width:160px">Thao Tác</th>
-        </tr>
-      </thead>
-      <tbody id="trash-tbody"></tbody>
-    </table>
-  </div>
-  <div id="trash-empty-msg" style="display:none;text-align:center;padding:48px;color:var(--t3)">
-    <div style="font-size:48px;margin-bottom:12px">🗑️</div>
-    <div style="font-size:15px;font-weight:600">Thùng rác trống</div>
-    <div style="font-size:12.5px;margin-top:4px">Không có mục nào bị xóa</div>
-  </div>
-
-  <!-- Action bar khi chọn nhiều -->
-  <div id="trash-action-bar" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 18px;box-shadow:0 8px 32px rgba(0,0,0,.15);display:flex;gap:10px;align-items:center;z-index:100">
-    <span id="trash-selected-count" style="font-size:13px;font-weight:600;color:var(--t2)">0 mục đã chọn</span>
-    <button class="btn btn-green btn-sm" onclick="trashRestoreSelected()">↩ Khôi Phục</button>
-    <button class="btn btn-red btn-sm" onclick="trashDeleteSelected()">🗑 Xóa Vĩnh Viễn</button>
-    <button class="btn btn-outline btn-sm" onclick="trashClearSelection()">✕ Bỏ Chọn</button>
-  </div>
-</div>
-<!-- ===== MODAL CẬP NHẬT TỒN KHO HÀNG LOẠT ===== -->
-<div class="mo" id="mo-update-ton">
-  <div class="mo-box mo-xl">
-    <div class="mo-head">
-      <h2>📊 Cập Nhật Hàng Loạt — Tồn Kho &amp; Giá</h2>
-      <button class="mo-close" onclick="closeMo('mo-update-ton')">×</button>
-    </div>
-    <div class="mo-body" style="padding-bottom:0">
-
-      <!-- Hướng dẫn -->
-      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;line-height:2">
-        <strong style="color:var(--blue)">📋 Hướng dẫn:</strong><br>
-        1. Mở file Excel → chọn cột <strong>Mã SKU</strong> và các cột cần update (<strong>Tồn / Giá Nhập / Giá Bán</strong>)<br>
-        2. <strong>Copy (Ctrl+C) → Dán vào ô bên dưới (Ctrl+V)</strong> — không cần header<br>
-        3. Chỉnh đúng số cột bên dưới → xem Preview → Áp Dụng<br>
-        <span style="color:#0369a1">💡 Hỗ trợ Tab (Excel) và dấu phẩy (CSV). Ví dụ: <code>VT00027 [Tab] 150 [Tab] 45000 [Tab] 79000</code></span>
-      </div>
-
-      <!-- Mode chọn -->
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <button class="btn btn-sm" id="ton-mode-btn-ton" onclick="tonSetMode('ton')"
-          style="background:var(--orange);color:#fff;font-weight:700">📦 Chỉ cập nhật Tồn Kho</button>
-        <button class="btn btn-outline btn-sm" id="ton-mode-btn-gia" onclick="tonSetMode('gia')">💰 Chỉ cập nhật Giá</button>
-        <button class="btn btn-outline btn-sm" id="ton-mode-btn-all" onclick="tonSetMode('all')">🔄 Cả Tồn + Giá</button>
-        <div style="margin-left:auto">
-          <button class="btn btn-red btn-sm" onclick="tonResetAll()">⚠️ Reset Tất Cả Tồn về 0</button>
-        </div>
-      </div>
-
-      <!-- Paste area -->
-      <div style="margin-bottom:10px">
-        <label style="font-size:12.5px;font-weight:600;color:var(--t2);display:block;margin-bottom:6px">Dán dữ liệu từ Excel:</label>
-        <textarea id="ton-paste-area" rows="7"
-          placeholder="Dán dữ liệu ở đây... Ví dụ (Tab-separated):&#10;VT00027&#9;150&#10;VT00024&#9;38&#9;42000&#9;79400&#10;VT00165&#9;200"
-          style="width:100%;padding:10px 12px;border:2px dashed var(--border);border-radius:8px;font-family:monospace;font-size:12.5px;resize:vertical;outline:none;line-height:1.7;background:#fafafa"
-          oninput="tonParsePreview()"
-          onfocus="this.style.borderColor='var(--blue)'"
-          onblur="this.style.borderColor='var(--border)'"></textarea>
-      </div>
-
-      <!-- Cài đặt cột -->
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;background:#f8fafc;padding:8px 12px;border-radius:8px;border:1px solid var(--border)">
-        <div style="font-size:12px;font-weight:700;color:var(--t2)">Vị trí cột:</div>
-        <div style="display:flex;align-items:center;gap:6px;font-size:12px">
-          <label>SKU:</label>
-          <select id="ton-col-sku" onchange="tonParsePreview()" style="padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit">
-            <option value="0">Cột 1</option><option value="1">Cột 2</option><option value="2">Cột 3</option>
-          </select>
-        </div>
-        <div id="ton-cfg-ton" style="display:flex;align-items:center;gap:6px;font-size:12px">
-          <label>Tồn kho:</label>
-          <select id="ton-col-ton" onchange="tonParsePreview()" style="padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit">
-            <option value="1">Cột 2</option><option value="0">Cột 1</option><option value="2">Cột 3</option><option value="3">Cột 4</option>
-          </select>
-        </div>
-        <div id="ton-cfg-gia" style="display:none;align-items:center;gap:10px;font-size:12px">
-          <div style="display:flex;align-items:center;gap:6px">
-            <label>Giá nhập:</label>
-            <select id="ton-col-gianhap" onchange="tonParsePreview()" style="padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit">
-              <option value="-1">— Bỏ qua —</option><option value="2">Cột 3</option><option value="1">Cột 2</option><option value="3">Cột 4</option>
-            </select>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <label>Giá bán:</label>
-            <select id="ton-col-giabanle" onchange="tonParsePreview()" style="padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit">
-              <option value="-1">— Bỏ qua —</option><option value="3">Cột 4</option><option value="2">Cột 3</option><option value="4">Cột 5</option>
-            </select>
-          </div>
-        </div>
-        <div id="ton-parse-summary" style="font-size:12px;color:var(--t3);margin-left:auto"></div>
-      </div>
-
-      <!-- Preview table -->
-      <div id="ton-preview-wrap" style="display:none;margin-bottom:0">
-        <div style="font-size:12.5px;font-weight:600;color:var(--t2);margin-bottom:6px">
-          Preview <span id="ton-preview-title"></span>:
-        </div>
-        <div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
-          <table class="data-tbl" style="margin:0">
-            <thead id="ton-preview-thead"></thead>
-            <tbody id="ton-preview-tbody"></tbody>
-          </table>
-        </div>
-        <div id="ton-not-found-wrap" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;font-size:12px;color:#dc2626">
-          <strong>⚠️ Không tìm thấy SKU:</strong> <span id="ton-not-found-list"></span>
-        </div>
-      </div>
-
-    </div>
-    <div class="mo-foot" style="justify-content:space-between">
-      <div style="font-size:12px;color:var(--t3)" id="ton-apply-summary"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-outline" onclick="closeMo('mo-update-ton')">Hủy</button>
-        <button class="btn btn-orange" id="ton-apply-btn" onclick="tonApplyUpdate()" disabled>
-          ✅ Áp Dụng Cập Nhật
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
