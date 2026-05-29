@@ -232,7 +232,69 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--t1
       <button class="btn btn-primary" onclick="openModalPXK()">+ Lập Phiếu Xuất Kho</button>
       <button class="btn btn-purple" onclick="thuGopCongNo()">📤 Thu Tiền Gộp Đơn Nợ</button>
       <button class="btn btn-green" onclick="exportExcel('pxk')" title="Tích chọn hàng để xuất riêng, không tích = xuất tất cả">📊 Xuất Excel</button>
-      <div class="search-box"><span class="si">🔍</span><input type="text" id="pxk-search" placeholder="Tìm mã PXK…" oninput="renderPXKTable()"></div>
+      <div style="display:flex;gap:6px;align-items:center;margin-left:auto;position:relative">
+        <div class="search-box"><span class="si">🔍</span><input type="text" id="pxk-search" placeholder="Tìm mã PXK, KH…" oninput="renderPXKTable()"></div>
+        <button id="pxk-filter-btn" onclick="togglePXKFilter()" style="padding:6px 14px;border:1px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer;background:var(--bg2);font-family:inherit;display:flex;align-items:center;gap:5px">
+          <span>🔽 Lọc</span><span id="pxk-filter-badge" style="display:none;background:#3b82f6;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700"></span>
+        </button>
+        <!-- Popup bộ lọc -->
+        <div id="pxk-filter-popup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;background:#ffffff;border:1px solid var(--border);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);z-index:3000;padding:20px 22px">
+          <!-- Backdrop -->
+          <div style="font-weight:700;font-size:13px;margin-bottom:12px">🔽 Bộ Lọc Phiếu Xuất Kho</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
+              <label style="font-size:11.5px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px">Trạng thái ghi sổ</label>
+              <select id="pxk-filter-gs" onchange="renderPXKTable()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+                <option value="">Tất cả</option>
+                <option value="Ghi Số">Ghi Số</option>
+                <option value="Nháp">Nháp</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11.5px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px">Trạng thái thanh toán</label>
+              <select id="pxk-filter-tt" onchange="renderPXKTable()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+                <option value="">Tất cả</option>
+                <option value="Tiền Mặt">Đã Thanh Toán</option>
+                <option value="Công Nợ">Công Nợ</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11.5px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px">Nhân viên bán hàng</label>
+              <select id="pxk-filter-nv" onchange="renderPXKTable()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+                <option value="">Tất cả NV</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11.5px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px">Hóa đơn VAT</label>
+              <select id="pxk-filter-hd" onchange="renderPXKTable()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+                <option value="">Tất cả</option>
+                <option value="Chưa Xuất">Chưa Xuất</option>
+                <option value="Đã Xuất">Đã Xuất</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <label style="font-size:11.5px;color:var(--t2);font-weight:600;display:block;margin-bottom:6px">Thời gian</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div>
+                <div style="font-size:11px;color:var(--t3);margin-bottom:3px">Từ ngày</div>
+                <input type="date" id="pxk-filter-from" onchange="renderPXKTable()"
+                  style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+              </div>
+              <span style="margin-top:16px;color:var(--t3)">→</span>
+              <div>
+                <div style="font-size:11px;color:var(--t3);margin-bottom:3px">Đến ngày</div>
+                <input type="date" id="pxk-filter-to" onchange="renderPXKTable()"
+                  style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:10px">
+            <button onclick="clearPXKFilter()" style="padding:6px 16px;border:1px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer;background:none;font-family:inherit">Đặt lại</button>
+            <button onclick="togglePXKFilter()" style="padding:6px 16px;background:#3b82f6;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit">✓ Lọc</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="tbl-wrap" style="overflow-x:auto">
       <table class="dtbl" style="min-width:1400px">
@@ -554,7 +616,8 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--t1
           <label>Khách Hàng <span class="req">*</span></label>
           <div class="ac-wrap">
             <input type="text" id="pxk-kh-input" placeholder="Gõ tên hoặc mã KH…" autocomplete="off"
-              oninput="acSearch('pxk-kh',this.value)" onfocus="acSearch('pxk-kh',this.value)">
+              oninput="acSearch('pxk-kh',this.value)" onfocus="acSearch('pxk-kh',this.value)"
+              onkeydown="acKeyNav(event,'pxk-kh')">
             <div class="ac-drop" id="pxk-kh-drop"></div>
             <input type="hidden" id="pxk-kh">
           </div>
@@ -607,7 +670,8 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--t1
           <label>Khách Hàng <span class="req">*</span></label>
           <div class="ac-wrap">
             <input type="text" id="bg-kh-input" placeholder="Gõ tên hoặc mã KH…" autocomplete="off"
-              oninput="acSearch('bg-kh',this.value)" onfocus="acSearch('bg-kh',this.value)">
+              oninput="acSearch('bg-kh',this.value)" onfocus="acSearch('bg-kh',this.value)"
+              onkeydown="acKeyNav(event,'bg-kh')">
             <div class="ac-drop" id="bg-kh-drop"></div>
             <input type="hidden" id="bg-kh">
           </div>
@@ -802,7 +866,7 @@ function showPage(id){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const map={'ban-hang':0,'danh-muc':1,'kiem-kho':2,'cham-soc-kh':3,'dong-bo':4,'thung-rac':5};
   if(map[id]!==undefined) document.querySelectorAll('.nav-item')[map[id]].classList.add('active');
-  if(id==='ban-hang'){renderPXKTable();renderBaoGiaTable();renderCongNoTable();}
+  if(id==='ban-hang'){initPXKFilters();renderPXKTable();renderBaoGiaTable();renderCongNoTable();}
   if(id==='danh-muc'){renderDMSanPham();renderDMKH();}
   if(id==='kiem-kho'){renderKiemKho();kkInitSheetsCfg();}
   if(id==='cham-soc-kh'){initChamSocKH();}
@@ -842,6 +906,17 @@ document.addEventListener('keydown',function(e){
 // ============================================================
 // PHÍM TẮT BÀN PHÍM
 // ============================================================
+
+// Ctrl+Insert: tách riêng để hoạt động kể cả khi đang nhập trong modal
+document.addEventListener('keydown',function(e){
+  if(!e.ctrlKey||e.key!=='Insert') return;
+  e.preventDefault();e.stopPropagation();
+  const pxkOpen=document.getElementById('mo-pxk')?.classList.contains('open');
+  const bgOpen=document.getElementById('mo-baogia')?.classList.contains('open');
+  if(pxkOpen&&window.addItemRow){window.addItemRow('pxk');return;}
+  if(bgOpen&&window.addItemRow){window.addItemRow('bg');return;}
+},true); // useCapture=true để bắt trước mọi listener khác
+
 document.addEventListener('keydown',function(e){
   // Không kích hoạt khi đang nhập liệu trong input/textarea/select
   const tag=document.activeElement?.tagName;
@@ -1049,6 +1124,37 @@ function acSetKH(ctx,khId){
   const addr=document.getElementById(prefix+'-diachi');
   if(addr&&kh.diachi) addr.value=kh.diachi;
   const sdtEl=document.getElementById(prefix+'-sdt');if(sdtEl&&kh.sdt)sdtEl.value=kh.sdt;
+}
+function acKeyNav(e,ctx){
+  const drop=document.getElementById(ctx+'-drop');
+  if(!drop||!drop.classList.contains('open')){
+    if(e.key==='ArrowDown'){e.preventDefault();acSearch(ctx,document.getElementById(ctx+'-input').value);return;}
+    return;
+  }
+  const items=[...drop.querySelectorAll('.ac-item')];
+  let sel=parseInt(drop.dataset.sel??'-1');
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    sel=Math.min(sel+1,items.length-1);
+    drop.dataset.sel=sel;
+    items.forEach((r,i)=>r.style.background=i===sel?'#e0eeff':'');
+    if(items[sel])items[sel].scrollIntoView({block:'nearest'});
+  } else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    sel=Math.max(sel-1,0);
+    drop.dataset.sel=sel;
+    items.forEach((r,i)=>r.style.background=i===sel?'#e0eeff':'');
+    if(items[sel])items[sel].scrollIntoView({block:'nearest'});
+  } else if(e.key==='Enter'){
+    e.preventDefault();
+    if(sel>=0&&items[sel]){
+      items[sel].dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));
+      drop.dataset.sel='-1';
+    }
+  } else if(e.key==='Escape'){
+    drop.classList.remove('open');
+    drop.dataset.sel='-1';
+  }
 }
 document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap'))document.querySelectorAll('.ac-drop.open').forEach(d=>d.classList.remove('open'));});
 
@@ -1371,7 +1477,7 @@ function _buildPrintHTML(body){
     +'.draft{position:fixed;top:130px;right:50px;font-size:44px;font-weight:900;color:rgba(220,38,38,.12);border:4px solid rgba(220,38,38,.12);padding:6px 16px;transform:rotate(-20deg);pointer-events:none;border-radius:8px}'
     +'@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
     +'</style></head><body>'+body
-    +'<script>window.onload=function(){window.print();};<\/script></body></html>';
+    +'<scr'+'ipt>window.onload=function(){window.print();}<'+'/scr'+'ipt>\n</body></html>';
 }
 
 const CO_SO_IN={
@@ -1469,13 +1575,57 @@ function inPXK(id){
   if(!w){toast('Cho phép popup để in!','error');return;}
   w.document.write(_buildPrintHTML(body));w.document.close();
 }
+function initPXKFilters(){
+  const sel=document.getElementById('pxk-filter-nv');
+  if(sel&&sel.options.length<=1){
+    sel.innerHTML='<option value="">Tất cả NV</option>'
+      +DB.nhanVien.filter(n=>!n._deleted).map(n=>`<option value="${n.id}">(${n.ma}) ${n.ten}</option>`).join('');
+  }
+}
+function togglePXKFilter(){
+  const popup=document.getElementById('pxk-filter-popup');
+  const bd=document.getElementById('pxk-filter-backdrop');
+  if(!popup) return;
+  const open=popup.style.display==='block';
+  popup.style.display=open?'none':'block';
+  if(bd) bd.style.display=open?'none':'block';
+  if(!open) initPXKFilters();
+}
+function clearPXKFilter(){
+  ['pxk-filter-nv','pxk-filter-tt','pxk-filter-gs','pxk-filter-hd','pxk-filter-from','pxk-filter-to'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  renderPXKTable();
+}
+function updatePXKFilterBadge(){
+  const ids=['pxk-filter-nv','pxk-filter-tt','pxk-filter-gs','pxk-filter-hd','pxk-filter-from','pxk-filter-to'];
+  const active=ids.filter(id=>document.getElementById(id)?.value).length;
+  const badge=document.getElementById('pxk-filter-badge');
+  if(badge){badge.style.display=active>0?'':'none';badge.textContent=active;}
+  const btn=document.getElementById('pxk-filter-btn');
+  if(btn) btn.style.borderColor=active>0?'#3b82f6':'var(--border)';
+}
 function renderPXKTable(){
   const q=(document.getElementById('pxk-search')?.value||'').toLowerCase();
+  const filterNV=document.getElementById('pxk-filter-nv')?.value||'';
+  const filterTT=document.getElementById('pxk-filter-tt')?.value||'';
+  const filterGS=document.getElementById('pxk-filter-gs')?.value||'';
+  const filterHD=document.getElementById('pxk-filter-hd')?.value||'';
+  const filterFrom=document.getElementById('pxk-filter-from')?.value||'';
+  const filterTo=document.getElementById('pxk-filter-to')?.value||'';
+  updatePXKFilterBadge();
   const tbody=document.getElementById('pxk-tbody');if(!tbody)return;
-  // Sắp xếp: mới nhất lên đầu
-  const list=DB.pxk
-    .filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q)||(getKH(p.khId).ten||'').toLowerCase().includes(q)))
-    .sort((a,b)=>b.ngay.localeCompare(a.ngay)||(b.updatedAt||0)-(a.updatedAt||0));
+  const list=DB.pxk.filter(p=>{
+    if(p._deleted) return false;
+    if(q&&!p.ma.toLowerCase().includes(q)&&!(getKH(p.khId).ten||'').toLowerCase().includes(q)) return false;
+    if(filterNV&&p.kdId!==filterNV) return false;
+    if(filterTT&&p.httt!==filterTT) return false;
+    if(filterGS&&p.soSach!==filterGS) return false;
+    if(filterHD&&p.hoadonVAT!==filterHD) return false;
+    if(filterFrom&&p.ngay<filterFrom) return false;
+    if(filterTo&&p.ngay>filterTo) return false;
+    return true;
+  }).sort((a,b)=>b.ngay.localeCompare(a.ngay)||(b.updatedAt||0)-(a.updatedAt||0));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="13"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu xuất kho nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(p=>{
     const kh=getKH(p.khId);
@@ -2257,7 +2407,13 @@ function applyRemoteData(remote){
   });
   // Lưu vào localStorage sau khi merge
   if(window._autoSave) window._autoSave();
-  renderPXKTable();renderBaoGiaTable();renderCongNoTable();renderDMSanPham();renderDMKH();
+  // Giữ lại giá trị search hiện tại khi render lại
+  const dmSearchInputs=document.querySelectorAll('#page-danh-muc .dm-search');
+  const qSP=dmSearchInputs[0]?.value||'';
+  const qKH=dmSearchInputs[1]?.value||'';
+  renderPXKTable();renderBaoGiaTable();renderCongNoTable();
+  renderDMSanPham(qSP);
+  renderDMKH(qKH);
   trashAutoClean();
   trashUpdateBadge();
 }
@@ -3316,6 +3472,9 @@ function xemLichSuKHT(khId){
   window.cskhTaoBGT = cskhTaoBGT;
   window.cskhTaoPXKT = cskhTaoPXKT;
   window.xemLichSuKHT = xemLichSuKHT;
+
+  // Expose addItemRow to window scope for Ctrl+Insert
+  window.addItemRow = addItemRow;
 })();
 </script>
 
@@ -3342,5 +3501,7 @@ function xemLichSuKHT(khId){
     <div style="font-size:15px;font-weight:600">Thùng rác trống</div>
   </div>
 </div>
+
+<div id="pxk-filter-backdrop" onclick="togglePXKFilter()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:2999"></div>
 </body>
 </html>
