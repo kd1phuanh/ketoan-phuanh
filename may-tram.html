@@ -59,7 +59,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--t1
 .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none}
 /* TABLE */
 .tbl-wrap{background:var(--card);border-radius:var(--rl);box-shadow:var(--sh);border:1px solid var(--border);overflow:hidden}
-.dtbl{width:100%;border-collapse:collapse}
+.dtbl{width:100%;border-collapse:separate;border-spacing:0}
 .dtbl th{background:#f8fafc;padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);white-space:nowrap}
 .dtbl td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12.5px;vertical-align:middle}
 .dtbl tr:last-child td{border-bottom:none}
@@ -208,6 +208,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--t1
 <div class="topbar">
   <div class="tb-title">💻 Phú Anh SME – Máy Trạm Bán Hàng</div>
   <div style="display:flex;align-items:center;gap:10px">
+    <button onclick="document.dispatchEvent(new KeyboardEvent('keypress',{key:'?',bubbles:true}))" title="Xem phím tắt (nhấn ?)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;color:var(--t2);font-family:inherit;margin-right:6px">⌨️ ?</button>
     <div id="sync-status-badge" class="sync-badge err">
       <span class="sync-dot err"></span><span id="sync-status-txt">Chưa kết nối máy chủ</span>
     </div>
@@ -233,12 +234,22 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--t1
       <button class="btn btn-green" onclick="exportExcel('pxk')" title="Tích chọn hàng để xuất riêng, không tích = xuất tất cả">📊 Xuất Excel</button>
       <div class="search-box"><span class="si">🔍</span><input type="text" id="pxk-search" placeholder="Tìm mã PXK…" oninput="renderPXKTable()"></div>
     </div>
-    <div class="tbl-wrap">
-      <table class="dtbl">
+    <div class="tbl-wrap" style="overflow-x:auto">
+      <table class="dtbl" style="min-width:1400px">
         <thead><tr>
-          <th><input type="checkbox" id="pxk-chkall" onchange="document.querySelectorAll('.pxk-chk:not([disabled])').forEach(c=>c.checked=this.checked)"></th>
-          <th>Ngày Lập</th><th>Mã PXK</th><th>Khách Hàng</th>
-          <th class="tr">Tổng Tiền (+VAT)</th><th>Số Sách</th><th>Hóa Đơn VAT</th><th>TT</th><th>Hành Động</th>
+          <th style="position:sticky;left:0;z-index:3;background:var(--bg2)"><input type="checkbox" id="pxk-chkall" onchange="document.querySelectorAll('.pxk-chk:not([disabled])').forEach(c=>c.checked=this.checked)"></th>
+          <th style="position:sticky;left:32px;z-index:3;background:var(--bg2);white-space:nowrap">Ngày Lập</th>
+          <th style="white-space:nowrap">Mã PXK</th>
+          <th style="min-width:180px">Khách Hàng</th>
+          <th style="white-space:nowrap">Nhân Viên BH</th>
+          <th class="tr" style="white-space:nowrap">Tổng Tiền Hàng</th>
+          <th class="tr" style="white-space:nowrap">Tiền CK</th>
+          <th class="tr" style="white-space:nowrap">Tiền Thuế GTGT</th>
+          <th class="tr" style="white-space:nowrap">Tổng TT</th>
+          <th style="white-space:nowrap">Số Sách</th>
+          <th style="white-space:nowrap">Hóa Đơn VAT</th>
+          <th style="white-space:nowrap">TT</th>
+          <th style="position:sticky;right:0;z-index:3;background:var(--bg2);white-space:nowrap;box-shadow:-2px 0 4px rgba(0,0,0,.06)">Hành Động</th>
         </tr></thead>
         <tbody id="pxk-tbody"></tbody>
       </table>
@@ -828,7 +839,186 @@ document.addEventListener('keydown',function(e){
   } else { top.classList.remove('open'); }
 });
 
-// ============ AUTOCOMPLETE (KH) ============
+// ============================================================
+// PHÍM TẮT BÀN PHÍM
+// ============================================================
+document.addEventListener('keydown',function(e){
+  // Không kích hoạt khi đang nhập liệu trong input/textarea/select
+  const tag=document.activeElement?.tagName;
+  const inInput=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||document.activeElement?.isContentEditable;
+  // Không kích hoạt khi modal đang mở (trừ Ctrl+P, Esc đã xử lý riêng)
+  const modalOpen=document.querySelector('.mo.open');
+
+  // ── F-keys: chuyển tab (luôn hoạt động, kể cả khi đang nhập) ──
+  if(e.key==='F1'){e.preventDefault();showPage('ban-hang');const el=document.querySelector('[onclick*="bh-nkxk"]');if(el)showTab(el,'bh-nkxk');return;}
+  if(e.key==='F2'){e.preventDefault();showPage('ban-hang');const el=document.querySelector('[onclick*="bh-baogia"]');if(el)showTab(el,'bh-baogia');return;}
+  if(e.key==='F3'){e.preventDefault();showPage('ban-hang');const el=document.querySelector('[onclick*="bh-congno"]');if(el)showTab(el,'bh-congno');return;}
+  if(e.key==='F4'&&!inInput){e.preventDefault();
+    // Focus ô tìm kiếm của tab đang active
+    const activeSub=document.querySelector('.sub-page.active .search-box input, .sub-page.active input[type=text]');
+    if(activeSub){activeSub.focus();activeSub.select();}
+    return;
+  }
+
+  // Không kích hoạt các phím tắt khác khi đang nhập hoặc modal mở
+  if(inInput||modalOpen) return;
+
+  // ── Ctrl+K: Focus tìm nhanh trong Kiểm Kho ──
+  if(e.ctrlKey&&e.key==='k'){e.preventDefault();
+    const kkSearch=document.getElementById('kk-search');
+    if(kkSearch){kkSearch.focus();kkSearch.select();}
+    return;
+  }
+  // ── Ctrl+N: Tạo PXK mới ──
+  if(e.ctrlKey&&e.key==='n'){e.preventDefault();
+    showPage('ban-hang');
+    const el=document.querySelector('[onclick*="bh-nkxk"]');if(el)showTab(el,'bh-nkxk');
+    setTimeout(()=>openModalPXK(null),100);
+    return;
+  }
+  // ── Ctrl+B: Tạo Báo Giá mới ──
+  if(e.ctrlKey&&e.key==='b'){e.preventDefault();
+    showPage('ban-hang');
+    const el=document.querySelector('[onclick*="bh-baogia"]');if(el)showTab(el,'bh-baogia');
+    setTimeout(()=>openModalBaoGia(null),100);
+    return;
+  }
+  // ── Ctrl+F: Focus tìm kiếm ──
+  if(e.ctrlKey&&e.key==='f'){e.preventDefault();
+    const activeSub=document.querySelector('.sub-page.active .search-box input');
+    if(activeSub){activeSub.focus();activeSub.select();}
+    return;
+  }
+  // ── Ctrl+G: Ghi Sổ phiếu PXK đang được check ──
+  if(e.ctrlKey&&e.key==='g'){e.preventDefault();
+    const checked=[...document.querySelectorAll('.pxk-chk:checked')];
+    if(checked.length===1){ghiSoPXK(checked[0].dataset.id);}
+    else if(checked.length>1){toast('⚠️ Chọn 1 phiếu để Ghi Sổ','error');}
+    else{toast('⚠️ Chưa chọn phiếu nào','error');}
+    return;
+  }
+  // ── Ctrl+P: In phiếu đang chọn ──
+  if(e.ctrlKey&&e.key==='p'){e.preventDefault();
+    const checked=[...document.querySelectorAll('.pxk-chk:checked')];
+    if(checked.length===1){inPXK(checked[0].dataset.id);}
+    else if(checked.length>1){toast('⚠️ Chọn 1 phiếu để in','error');}
+    else{window.print();}
+    return;
+  }
+  // ── Alt+1~5: chuyển tab nhanh ──
+  if(e.altKey){
+    const tabMap={'1':'bh-nkxk','2':'bh-baogia','3':'bh-congno','4':'bh-gom','5':'bh-hoadon'};
+    if(tabMap[e.key]){e.preventDefault();
+      showPage('ban-hang');
+      const el=document.querySelector(`[onclick*="${tabMap[e.key]}"]`);
+      if(el)showTab(el,tabMap[e.key]);
+      return;
+    }
+  }
+});
+
+// Hiển thị tooltip phím tắt khi nhấn ?
+document.addEventListener('keypress',function(e){
+  if(e.key!=='?')return;
+  const tag=document.activeElement?.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA')return;
+  const modalOpen=document.querySelector('.mo.open');
+  if(modalOpen)return;
+  // Show shortcut help
+  const help=`<div style="font-size:13px;line-height:2">
+    <div style="font-weight:700;margin-bottom:8px;font-size:14px">⌨️ Phím Tắt</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 16px">
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">F1</kbd><span>Tab Nhật Ký PXK</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">F2</kbd><span>Tab Báo Giá</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">F3</kbd><span>Tab Công Nợ</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">F4</kbd><span>Focus ô tìm kiếm</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Ctrl+N</kbd><span>Tạo PXK mới</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Ctrl+B</kbd><span>Tạo Báo Giá mới</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Ctrl+F</kbd><span>Tìm kiếm nhanh</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Ctrl+G</kbd><span>Ghi Sổ phiếu đã chọn</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Ctrl+P</kbd><span>In phiếu đã chọn</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Alt+1~5</kbd><span>Chuyển tab nhanh</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">↑ ↓</kbd><span>Di chuyển dòng trong bảng PXK</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">← →</kbd><span>Cuộn ngang bảng PXK</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Space</kbd><span>Tick/bỏ tick dòng đang chọn</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Enter</kbd><span>Mở/in phiếu dòng đang chọn</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Delete</kbd><span>Xóa phiếu Nháp đang chọn</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Esc</kbd><span>Đóng modal/popup</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">?</kbd><span>Hiện bảng phím tắt này</span>
+    </div>
+  </div>`;
+  document.getElementById('confirm-title').textContent='Phím Tắt Bàn Phím';
+  document.getElementById('confirm-msg').innerHTML=help;
+  document.getElementById('confirm-ok').textContent='Đóng';
+  document.getElementById('confirm-ok').onclick=()=>closeMo('mo-confirm');
+  openMo('mo-confirm');
+});
+
+// ── Phím mũi tên: điều hướng trong bảng PXK ──────────────────
+// ↑↓ di chuyển dòng, Space tick checkbox, Enter mở/in phiếu
+let _pxkFocusIdx=-1;
+function _pxkRows(){return [...document.querySelectorAll('#pxk-tbody tr:not(.row-locked-hide)')];}
+function _pxkHighlight(idx){
+  const rows=_pxkRows();if(!rows.length)return;
+  idx=Math.max(0,Math.min(idx,rows.length-1));
+  rows.forEach((r,i)=>r.style.outline=i===idx?'2px solid var(--blue)':'');
+  rows[idx]?.scrollIntoView({block:'nearest'});
+  _pxkFocusIdx=idx;
+}
+
+document.addEventListener('keydown',function(e){
+  // Chỉ hoạt động khi không modal, không đang nhập
+  const tag=document.activeElement?.tagName;
+  const inInput=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT';
+  const modalOpen=document.querySelector('.mo.open');
+  if(inInput||modalOpen)return;
+
+  // Chỉ kích hoạt khi đang ở tab PXK
+  const pxkTab=document.getElementById('bh-nkxk');
+  if(!pxkTab||!pxkTab.classList.contains('active'))return;
+
+  const rows=_pxkRows();
+  if(!rows.length)return;
+
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    _pxkHighlight(_pxkFocusIdx<0?0:_pxkFocusIdx+1);
+  }
+  else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    _pxkHighlight(_pxkFocusIdx<=0?0:_pxkFocusIdx-1);
+  }
+  else if(e.key==='ArrowLeft'){
+    e.preventDefault();
+    // Cuộn bảng sang trái
+    const wrap=document.querySelector('#bh-nkxk .tbl-wrap');
+    if(wrap)wrap.scrollLeft=Math.max(0,wrap.scrollLeft-120);
+  }
+  else if(e.key==='ArrowRight'){
+    e.preventDefault();
+    // Cuộn bảng sang phải
+    const wrap=document.querySelector('#bh-nkxk .tbl-wrap');
+    if(wrap)wrap.scrollLeft+=120;
+  }
+  else if(e.key===' '&&_pxkFocusIdx>=0){
+    // Space: tick/untick checkbox dòng đang chọn
+    e.preventDefault();
+    const chk=rows[_pxkFocusIdx]?.querySelector('.pxk-chk');
+    if(chk&&!chk.disabled)chk.checked=!chk.checked;
+  }
+  else if(e.key==='Enter'&&_pxkFocusIdx>=0){
+    // Enter: in phiếu dòng đang chọn
+    e.preventDefault();
+    const lnk=rows[_pxkFocusIdx]?.querySelector('.lnk');
+    if(lnk)lnk.click();
+  }
+  else if(e.key==='Delete'&&_pxkFocusIdx>=0){
+    // Delete: xóa phiếu dòng đang chọn (nếu là Nháp)
+    e.preventDefault();
+    const chk=rows[_pxkFocusIdx]?.querySelector('.pxk-chk');
+    if(chk&&!chk.disabled&&chk.dataset.id)xoaPXK(chk.dataset.id);
+  }
+});
 function acSearch(ctx,q){
   const drop=document.getElementById(ctx+'-drop');
   if(!drop) return;
@@ -899,7 +1089,7 @@ function spRenderDropList(drop,q,ctx,onlyTon){
   if(cntEl) cntEl.textContent=list.length+' sp';
   listEl.innerHTML=list.map(s=>`<div class="sp-drop-row" onmousedown="spAcSelect(this,'${s.id}','${ctx}')">
     <span class="sp-ma">${s.sku}</span><span class="sp-ten" title="${s.ten}">${s.ten}</span>
-    <span class="sp-ton" style="${s.ton<=0?'color:var(--red)':''}">${s.ton>0?s.ton+' '+s.don:'Hết'}</span>
+    <span class="sp-ton" style="color:${s.ton<0?'var(--red)':s.ton===0?'#f59e0b':''}">${s.ton>0?s.ton+' '+s.don:s.ton<0?s.ton+' '+s.don+'⚠️':'Hết'}</span>
     <span class="sp-gia">${fmt(s.giaBan)} ₫</span>
   </div>`).join('');
   drop.dataset.ctx=ctx;drop.dataset.q=q;
@@ -1114,13 +1304,13 @@ function savePXK(){
     }
     Object.assign(p,stamp({khId,ngay,kdId:document.getElementById('pxk-kd').value,httt:document.getElementById('pxk-httt').value,vat:vatPct,diachi:document.getElementById('pxk-diachi').value,sdt:document.getElementById('pxk-sdt').value,nguoiNhan:document.getElementById('pxk-nguoinhan').value,ghichu:document.getElementById('pxk-ghichu').value,items,soSach:'Ghi Số'}));
     // Trừ tồn kho theo items mới
-    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
+    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=(sp.ton||0)-it.sl;sp.updatedAt=Date.now();}});
     toast('Đã cập nhật PXK!');
   } else {
     const ma=genId('PXK');
     DB.pxk.unshift(stamp({id:ma,ma,ngay,khId,kdId:document.getElementById('pxk-kd').value,httt:document.getElementById('pxk-httt').value,vat:vatPct,diachi:document.getElementById('pxk-diachi').value,sdt:document.getElementById('pxk-sdt').value,nguoiNhan:document.getElementById('pxk-nguoinhan').value,ghichu:document.getElementById('pxk-ghichu').value,items,soSach:'Ghi Số',hoadonVAT:'Chưa Xuất'}));
     // Trừ tồn kho khi xuất mới
-    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
+    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=(sp.ton||0)-it.sl;sp.updatedAt=Date.now();}});
     toast('Đã lập & ghi sổ PXK: '+ma);
   }
   closeMo('mo-pxk');renderPXKTable();
@@ -1286,21 +1476,47 @@ function renderPXKTable(){
   const list=DB.pxk
     .filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q)||(getKH(p.khId).ten||'').toLowerCase().includes(q)))
     .sort((a,b)=>b.ngay.localeCompare(a.ngay)||(b.updatedAt||0)-(a.updatedAt||0));
-  if(!list.length){tbody.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu xuất kho nào</p></div></td></tr>`;return;}
+  if(!list.length){tbody.innerHTML=`<tr><td colspan="13"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu xuất kho nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(p=>{
-    const kh=getKH(p.khId);const{total}=calcPXKTotals(p.items,p.vat);
+    const kh=getKH(p.khId);
+    const vatPct=Number(p.vat??0);
+    // Tính chi tiết: tiền hàng trước VAT, tiền CK, tiền VAT, tổng TT
+    let subTotal=0, tongCK=0;
+    (p.items||[]).forEach(it=>{
+      const goc=it.sl*it.donGia;
+      const ck=goc*(it.ck||0)/100;
+      tongCK+=ck;
+      subTotal+=goc-ck;
+    });
+    const tienVAT=Math.round(subTotal*vatPct/100);
+    const tongTT=Math.round(subTotal+tienVAT);
+    const tongHang=Math.round(subTotal); // tiền hàng sau CK, trước VAT
+    const tongHangGoc=Math.round(subTotal+tongCK); // tiền hàng gốc trước CK
+    tongCK=Math.round(tongCK);
+    // NV bán hàng
+    const nv=getNV(p.kdId);
     const locked=isPXKLocked(p);const isGS=p.soSach==='Ghi Số';
     let acts='';
     if(locked) acts=`<span class="bdg bdg-gray" style="font-size:10.5px">🔒 Khóa</span><span class="sep"></span><span class="al al-gray" onclick="inPXK('${p.id}')">🖨 In</span>`;
-    else if(isGS) acts=`<span class="al al-orange" onclick="unghiSoPXK('${p.id}')">↩ Bỏ GS</span><span class="sep"></span><span class="al al-red" onclick="xoaPXK('${p.id}')">🗑</span><span class="sep"></span><span class="al al-gray" onclick="inPXK('${p.id}')">🖨</span>`;
-    else acts=`<span class="al al-blue" onclick="openModalPXK('${p.id}')">✏️</span><span class="sep"></span><span class="al al-red" onclick="xoaPXK('${p.id}')">🗑</span><span class="sep"></span><span class="al al-gray" onclick="inPXK('${p.id}')">🖨</span>`;
-    return `<tr class="${locked?'row-locked':''}"><td><input type="checkbox" class="pxk-chk" data-id="${p.id}" ${locked?'disabled':''}></td>
-      <td>${p.ngay}</td><td><span class="lnk" onclick="inPXK('${p.id}')">${locked?'🔒 ':' '}${p.ma}</span></td>
-      <td>${kh.ten||p.khId}${p.nguoiNhan?`<br><span style="font-size:11px;color:var(--t3);font-style:italic">✏️ ${p.nguoiNhan}</span>`:''}</td><td class="tr money m-blue">${fmt(total)} ₫</td>
+    else if(isGS) acts=`<span class="al al-orange" onclick="unghiSoPXK('${p.id}')">↩ Bỏ GS</span><span class="sep"></span><span class="al al-gray" onclick="ghiSoPXK('${p.id}')">📝 GS</span><span class="sep"></span><span class="al al-gray" onclick="inPXK('${p.id}')">🖨</span>`;
+    else acts=`<span class="al al-blue" onclick="openModalPXK('${p.id}')">✏️</span><span class="sep"></span><span class="al al-red" onclick="xoaPXK('${p.id}')">🗑</span><span class="sep"></span><span class="al al-green" onclick="ghiSoPXK('${p.id}')">📝 GS</span><span class="sep"></span><span class="al al-gray" onclick="inPXK('${p.id}')">🖨</span>`;
+    const sticky0='position:sticky;left:0;z-index:1;background:var(--bg2)';
+    const sticky1='position:sticky;left:32px;z-index:1;background:var(--bg2);white-space:nowrap';
+    const stickyR='position:sticky;right:0;z-index:1;background:var(--bg2);box-shadow:-2px 0 4px rgba(0,0,0,.06)';
+    return `<tr class="${locked?'row-locked':''}">
+      <td style="${sticky0}"><input type="checkbox" class="pxk-chk" data-id="${p.id}" ${locked?'disabled':''}></td>
+      <td style="${sticky1}">${p.ngay}</td>
+      <td><span class="lnk" onclick="inPXK('${p.id}')">${locked?'🔒 ':' '}${p.ma}</span></td>
+      <td>${kh.ten||p.khId}${p.nguoiNhan?`<br><span style="font-size:11px;color:var(--t3);font-style:italic">✏️ ${p.nguoiNhan}</span>`:''}</td>
+      <td style="white-space:nowrap;font-size:12px">${nv.ten||p.kdId||'—'}</td>
+      <td class="tr money">${fmt(tongHang)} ₫</td>
+      <td class="tr money ${tongCK>0?'m-orange':''}">${tongCK>0?fmt(tongCK)+' ₫':'—'}</td>
+      <td class="tr money ${tienVAT>0?'m-blue':''}">${tienVAT>0?fmt(tienVAT)+' ₫':'—'}</td>
+      <td class="tr money m-blue"><strong>${fmt(tongTT)} ₫</strong></td>
       <td><span class="bdg ${isGS?'bdg-green':'bdg-orange'}">${p.soSach}</span></td>
       <td><span class="bdg bdg-gray" style="font-size:10.5px">${p.hoadonVAT}</span></td>
       <td><span class="bdg ${p.httt==='Tiền Mặt'?'bdg-green':'bdg-red'}">${p.httt==='Tiền Mặt'?'Đã TT':'Công Nợ'}</span></td>
-      <td><div class="acts">${acts}</div></td></tr>`;
+      <td style="${stickyR}"><div class="acts">${acts}</div></td></tr>`;
   }).join('');
 }
 
@@ -1469,7 +1685,7 @@ function chuyenSangPXK(bgId){
   // Trừ tồn kho khi xuất
   b.items.forEach(it=>{
     const sp=DB.sanPham.find(x=>x.id===it.spId);
-    if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=now;}
+    if(sp){sp.ton=(sp.ton||0)-it.sl;sp.updatedAt=now;}
   });
   // Đánh dấu BG đã chuyển
   b.trangThai='Đã chuyển PXK';b.updatedAt=now;
@@ -2252,7 +2468,8 @@ function renderKiemKho(){
         <input type="text" value="${ghiChu}" placeholder="Ghi chú…"
           style="width:100%;padding:4px 6px;border:1px solid transparent;border-radius:5px;font-size:11.5px;font-family:inherit;outline:none;background:transparent"
           onfocus="this.style.borderColor='#3b82f6';this.style.background='#fff'"
-          onblur="this.style.borderColor='transparent';this.style.background='transparent';kkSetNote('${dataKey}',this.value)">
+          onblur="this.style.borderColor='transparent';this.style.background='transparent';kkSetNote('${dataKey}',this.value)"
+          onkeydown="kkNavNote(event,${i})">
       </td>
     </tr>`;
   }).join('');
@@ -2328,15 +2545,57 @@ function kkSetNote(sku, val){
 
 // Di chuyển ô bằng Enter/Tab
 function kkNavCell(e, rowIdx){
+  const numInputs=[...document.querySelectorAll('#kk-tbody input[type=number]')];
+  const noteInputs=[...document.querySelectorAll('#kk-tbody input[type=text]')];
+  const allRows=document.querySelectorAll('#kk-tbody tr');
+
   if(e.key==='Enter'||e.key==='ArrowDown'){
     e.preventDefault();
-    const inputs=document.querySelectorAll('#kk-tbody input[type=number]');
-    if(inputs[rowIdx+1]) inputs[rowIdx+1].focus();
-  } else if(e.key==='ArrowUp'){
-    e.preventDefault();
-    const inputs=document.querySelectorAll('#kk-tbody input[type=number]');
-    if(rowIdx>0) inputs[rowIdx-1].focus();
+    if(numInputs[rowIdx+1]){numInputs[rowIdx+1].focus();numInputs[rowIdx+1].select();}
   }
+  else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    if(rowIdx>0){numInputs[rowIdx-1].focus();numInputs[rowIdx-1].select();}
+  }
+  else if(e.key==='Tab'&&!e.shiftKey){
+    // Tab: sang ô ghi chú cùng dòng
+    e.preventDefault();
+    if(noteInputs[rowIdx]){noteInputs[rowIdx].focus();noteInputs[rowIdx].select();}
+  }
+  else if(e.key==='Tab'&&e.shiftKey){
+    // Shift+Tab: về ô số lượng dòng trên
+    e.preventDefault();
+    if(rowIdx>0){numInputs[rowIdx-1].focus();numInputs[rowIdx-1].select();}
+  }
+  // Highlight dòng đang focus
+  allRows.forEach((r,i)=>r.style.outline=i===rowIdx?'2px solid #3b82f6':'');
+}
+
+function kkNavNote(e, rowIdx){
+  const numInputs=[...document.querySelectorAll('#kk-tbody input[type=number]')];
+  const noteInputs=[...document.querySelectorAll('#kk-tbody input[type=text]')];
+  const allRows=document.querySelectorAll('#kk-tbody tr');
+
+  if(e.key==='Enter'||e.key==='Tab'&&!e.shiftKey){
+    // Enter/Tab từ ghi chú → xuống dòng tiếp số lượng
+    e.preventDefault();
+    if(numInputs[rowIdx+1]){numInputs[rowIdx+1].focus();numInputs[rowIdx+1].select();}
+  }
+  else if(e.key==='Tab'&&e.shiftKey){
+    // Shift+Tab: về ô số lượng cùng dòng
+    e.preventDefault();
+    if(numInputs[rowIdx]){numInputs[rowIdx].focus();numInputs[rowIdx].select();}
+  }
+  else if(e.key==='ArrowDown'){
+    e.preventDefault();
+    if(noteInputs[rowIdx+1]){noteInputs[rowIdx+1].focus();}
+  }
+  else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    if(rowIdx>0){noteInputs[rowIdx-1].focus();}
+  }
+  // Highlight dòng
+  allRows.forEach((r,i)=>r.style.outline=i===rowIdx?'2px solid #3b82f6':'');
 }
 
 function kkSave(){
