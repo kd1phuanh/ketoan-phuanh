@@ -317,14 +317,88 @@ select{font-family:inherit}
       <button class="btn btn-primary" onclick="openModalPXK()">+ Lập Phiếu Xuất Kho</button>
       <button class="btn btn-purple" onclick="thuGopCongNo()">📤 Thu Tiền Gộp Đơn Nợ</button>
       <button class="btn btn-green" onclick="exportExcel('pxk')">📊 Xuất Excel Chi Tiết</button>
-      <div class="search-box"><span class="si">🔍</span><input type="text" id="pxk-search" placeholder="Tìm mã PXK…" oninput="renderPXKTable()"></div>
+      <div style="display:flex;gap:6px;align-items:center;margin-left:auto;position:relative">
+        <div class="search-box"><span class="si">🔍</span><input type="text" id="pxk-search" placeholder="Tìm mã PXK, KH…" oninput="renderPXKTable()"></div>
+        <button id="pxk-filter-btn" onclick="togglePXKFilter()" style="padding:6px 14px;border:1px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer;background:var(--bg2);font-family:inherit;display:flex;align-items:center;gap:5px">
+          <span>🔽 Lọc</span><span id="pxk-filter-badge" style="display:none;background:#3b82f6;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700"></span>
+        </button>
+        <!-- Popup bộ lọc -->
+        <div id="pxk-filter-popup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;background:#ffffff;border:1px solid var(--border);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);z-index:3000;padding:20px 22px">
+          <!-- Backdrop -->
+          <div style="font-weight:700;font-size:13px;margin-bottom:12px">🔽 Bộ Lọc Phiếu Xuất Kho</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
+              <label style="font-size:11.5px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px">Trạng thái ghi sổ</label>
+              <select id="pxk-filter-gs" onchange="renderPXKTable()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+                <option value="">Tất cả</option>
+                <option value="Ghi Số">Ghi Số</option>
+                <option value="Nháp">Nháp</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11.5px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px">Trạng thái thanh toán</label>
+              <select id="pxk-filter-tt" onchange="renderPXKTable()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+                <option value="">Tất cả</option>
+                <option value="Tiền Mặt">Đã Thanh Toán</option>
+                <option value="Công Nợ">Công Nợ</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11.5px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px">Nhân viên bán hàng</label>
+              <select id="pxk-filter-nv" onchange="renderPXKTable()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+                <option value="">Tất cả NV</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11.5px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px">Hóa đơn VAT</label>
+              <select id="pxk-filter-hd" onchange="renderPXKTable()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+                <option value="">Tất cả</option>
+                <option value="Chưa Xuất">Chưa Xuất</option>
+                <option value="Đã Xuất">Đã Xuất</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <label style="font-size:11.5px;color:var(--t2);font-weight:600;display:block;margin-bottom:6px">Thời gian</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div>
+                <div style="font-size:11px;color:var(--t3);margin-bottom:3px">Từ ngày</div>
+                <input type="date" id="pxk-filter-from" onchange="renderPXKTable()"
+                  style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+              </div>
+              <span style="margin-top:16px;color:var(--t3)">→</span>
+              <div>
+                <div style="font-size:11px;color:var(--t3);margin-bottom:3px">Đến ngày</div>
+                <input type="date" id="pxk-filter-to" onchange="renderPXKTable()"
+                  style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--bg)">
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:10px">
+            <button onclick="clearPXKFilter()" style="padding:6px 16px;border:1px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer;background:none;font-family:inherit">Đặt lại</button>
+            <button onclick="togglePXKFilter()" style="padding:6px 16px;background:#3b82f6;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit">✓ Lọc</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tbl-wrap" style="overflow-x:auto">
     </div>
     <div class="tbl-wrap">
-      <table class="dtbl">
+      <table class="dtbl" style="min-width:1400px">
         <thead><tr>
-          <th><input type="checkbox" id="pxk-chkall" onchange="toggleAllCheck('pxk',this)"></th>
-          <th>Ngày Lập</th><th>Mã Phiếu PXK</th><th>Khách Hàng &amp; Nơi Giao</th>
-          <th class="tr">Tổng Tiền (+VAT)</th><th>Số Sách</th><th>Hóa Đơn VAT</th><th>TT</th><th>Hành Động</th>
+          <th style="position:sticky;left:0;z-index:3;background:var(--bg2)"><input type="checkbox" id="pxk-chkall" onchange="document.querySelectorAll('.pxk-chk:not([disabled])').forEach(c=>c.checked=this.checked)"></th>
+          <th style="position:sticky;left:32px;z-index:3;background:var(--bg2);white-space:nowrap">Ngày Lập</th>
+          <th style="white-space:nowrap">Mã PXK</th>
+          <th style="min-width:180px">Khách Hàng</th>
+          <th style="white-space:nowrap">Nhân Viên BH</th>
+          <th class="tr" style="white-space:nowrap">Tổng Tiền Hàng</th>
+          <th class="tr" style="white-space:nowrap">Tiền CK</th>
+          <th class="tr" style="white-space:nowrap">Tiền Thuế GTGT</th>
+          <th class="tr" style="white-space:nowrap">Tổng TT</th>
+          <th style="white-space:nowrap">Số Sách</th>
+          <th style="white-space:nowrap">Hóa Đơn VAT</th>
+          <th style="white-space:nowrap">TT</th>
+          <th style="position:sticky;right:0;z-index:3;background:var(--bg2);white-space:nowrap;box-shadow:-2px 0 4px rgba(0,0,0,.06)">Hành Động</th>
         </tr></thead>
         <tbody id="pxk-tbody"></tbody>
       </table>
@@ -800,7 +874,7 @@ select{font-family:inherit}
         <div class="fg">
           <label>Khách Hàng <span class="req">*</span></label>
           <div class="ac-wrap" id="pxk-kh-wrap">
-            <input type="text" id="pxk-kh-input" placeholder="Gõ tên hoặc mã KH để tìm…" autocomplete="off" oninput="acSearch('pxk-kh',this.value)" onfocus="acSearch('pxk-kh',this.value)">
+            <input type="text" id="pxk-kh-input" placeholder="Gõ tên hoặc mã KH để tìm…" autocomplete="off" oninput="acSearch('pxk-kh',this.value)" onfocus="acSearch('pxk-kh',this.value)" onkeydown="acKeyNav(event,'pxk-kh')">
             <div class="ac-drop" id="pxk-kh-drop"></div>
             <input type="hidden" id="pxk-kh">
           </div>
@@ -850,7 +924,7 @@ select{font-family:inherit}
         <div class="fg">
           <label>Khách Hàng <span class="req">*</span></label>
           <div class="ac-wrap">
-            <input type="text" id="bg-kh-input" placeholder="Gõ tên hoặc mã KH…" autocomplete="off" oninput="acSearch('bg-kh',this.value)" onfocus="acSearch('bg-kh',this.value)">
+            <input type="text" id="bg-kh-input" placeholder="Gõ tên hoặc mã KH…" autocomplete="off" oninput="acSearch('bg-kh',this.value)" onfocus="acSearch('bg-kh',this.value)" onkeydown="acKeyNav(event,'bg-kh')">
             <div class="ac-drop" id="bg-kh-drop"></div>
             <input type="hidden" id="bg-kh">
           </div>
@@ -2108,6 +2182,262 @@ function calcPNK(){
   if(el_taxrow) el_taxrow.style.display=vatPct===0?'none':'flex';
 }
 
+
+// ============================================================
+// PHÍM TẮT BÀN PHÍM
+// ============================================================
+
+// Ctrl+Insert: tách riêng để hoạt động kể cả khi đang nhập trong modal
+document.addEventListener('keydown',function(e){
+  if(!e.ctrlKey||e.key!=='Insert') return;
+  e.preventDefault();e.stopPropagation();
+  const pxkOpen=document.getElementById('mo-pxk')?.classList.contains('open');
+  const bgOpen=document.getElementById('mo-baogia')?.classList.contains('open');
+  if(pxkOpen&&window.addItemRow){window.addItemRow('pxk');return;}
+  if(bgOpen&&window.addItemRow){window.addItemRow('bg');return;}
+},true); // useCapture=true để bắt trước mọi listener khác
+
+document.addEventListener('keydown',function(e){
+  // Không kích hoạt khi đang nhập liệu trong input/textarea/select
+  const tag=document.activeElement?.tagName;
+  const inInput=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||document.activeElement?.isContentEditable;
+  // Không kích hoạt khi modal đang mở (trừ Ctrl+P, Esc đã xử lý riêng)
+  const modalOpen=document.querySelector('.mo.open');
+
+  // ── F-keys: chuyển tab (luôn hoạt động, kể cả khi đang nhập) ──
+  if(e.key==='F1'){e.preventDefault();showPage('ban-hang');const el=document.querySelector('[onclick*="bh-nkxk"]');if(el)showTab(el,'bh-nkxk');return;}
+  if(e.key==='F2'){e.preventDefault();showPage('ban-hang');const el=document.querySelector('[onclick*="bh-baogia"]');if(el)showTab(el,'bh-baogia');return;}
+  if(e.key==='F3'){e.preventDefault();showPage('ban-hang');const el=document.querySelector('[onclick*="bh-congno"]');if(el)showTab(el,'bh-congno');return;}
+  if(e.key==='F4'&&!inInput){e.preventDefault();
+    // Focus ô tìm kiếm của tab đang active
+    const activeSub=document.querySelector('.sub-page.active .search-box input, .sub-page.active input[type=text]');
+    if(activeSub){activeSub.focus();activeSub.select();}
+    return;
+  }
+
+  // Không kích hoạt các phím tắt khác khi đang nhập hoặc modal mở
+  if(inInput||modalOpen) return;
+
+  // ── Ctrl+K: Focus tìm nhanh trong Kiểm Kho ──
+  if(e.ctrlKey&&e.key==='k'){e.preventDefault();
+    const kkSearch=document.getElementById('kk-search');
+    if(kkSearch){kkSearch.focus();kkSearch.select();}
+    return;
+  }
+  // ── Ctrl+N: Tạo PXK mới ──
+  if(e.ctrlKey&&e.key==='n'){e.preventDefault();
+    showPage('ban-hang');
+    const el=document.querySelector('[onclick*="bh-nkxk"]');if(el)showTab(el,'bh-nkxk');
+    setTimeout(()=>openModalPXK(null),100);
+    return;
+  }
+  // ── Ctrl+B: Tạo Báo Giá mới ──
+  if(e.ctrlKey&&e.key==='b'){e.preventDefault();
+    showPage('ban-hang');
+    const el=document.querySelector('[onclick*="bh-baogia"]');if(el)showTab(el,'bh-baogia');
+    setTimeout(()=>openModalBaoGia(null),100);
+    return;
+  }
+  // ── Ctrl+F: Focus tìm kiếm ──
+  if(e.ctrlKey&&e.key==='f'){e.preventDefault();
+    const activeSub=document.querySelector('.sub-page.active .search-box input');
+    if(activeSub){activeSub.focus();activeSub.select();}
+    return;
+  }
+  // ── Ctrl+G: Ghi Sổ phiếu PXK đang được check ──
+  if(e.ctrlKey&&e.key==='g'){e.preventDefault();
+    const checked=[...document.querySelectorAll('.pxk-chk:checked')];
+    if(checked.length===1){ghiSoPXK(checked[0].dataset.id);}
+    else if(checked.length>1){toast('⚠️ Chọn 1 phiếu để Ghi Sổ','error');}
+    else{toast('⚠️ Chưa chọn phiếu nào','error');}
+    return;
+  }
+  // ── Ctrl+P: In phiếu đang chọn ──
+  if(e.ctrlKey&&e.key==='p'){e.preventDefault();
+    const checked=[...document.querySelectorAll('.pxk-chk:checked')];
+    if(checked.length===1){inPXK(checked[0].dataset.id);}
+    else if(checked.length>1){toast('⚠️ Chọn 1 phiếu để in','error');}
+    else{window.print();}
+    return;
+  }
+  // ── Alt+1~5: chuyển tab nhanh ──
+  if(e.altKey){
+    const tabMap={'1':'bh-nkxk','2':'bh-baogia','3':'bh-congno','4':'bh-gom','5':'bh-hoadon'};
+    if(tabMap[e.key]){e.preventDefault();
+      showPage('ban-hang');
+      const el=document.querySelector(`[onclick*="${tabMap[e.key]}"]`);
+      if(el)showTab(el,tabMap[e.key]);
+      return;
+    }
+  }
+});
+
+// Hiển thị tooltip phím tắt khi nhấn ?
+document.addEventListener('keypress',function(e){
+  if(e.key!=='?')return;
+  const tag=document.activeElement?.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA')return;
+  const modalOpen=document.querySelector('.mo.open');
+  if(modalOpen)return;
+  // Show shortcut help
+  const help=`<div style="font-size:13px;line-height:2">
+    <div style="font-weight:700;margin-bottom:8px;font-size:14px">⌨️ Phím Tắt</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 16px">
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">F1</kbd><span>Tab Nhật Ký PXK</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">F2</kbd><span>Tab Báo Giá</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">F3</kbd><span>Tab Công Nợ</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">F4</kbd><span>Focus ô tìm kiếm</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Ctrl+N</kbd><span>Tạo PXK mới</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Ctrl+B</kbd><span>Tạo Báo Giá mới</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Ctrl+F</kbd><span>Tìm kiếm nhanh</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Ctrl+G</kbd><span>Ghi Sổ phiếu đã chọn</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Ctrl+P</kbd><span>In phiếu đã chọn</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Alt+1~5</kbd><span>Chuyển tab nhanh</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">↑ ↓</kbd><span>Di chuyển dòng trong bảng PXK</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">← →</kbd><span>Cuộn ngang bảng PXK</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Space</kbd><span>Tick/bỏ tick dòng đang chọn</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Enter</kbd><span>Mở/in phiếu dòng đang chọn</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Delete</kbd><span>Xóa phiếu Nháp đang chọn</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">Esc</kbd><span>Đóng modal/popup</span>
+      <kbd style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:2px 8px;font-family:monospace;font-size:12px">?</kbd><span>Hiện bảng phím tắt này</span>
+    </div>
+  </div>`;
+  document.getElementById('confirm-title').textContent='Phím Tắt Bàn Phím';
+  document.getElementById('confirm-msg').innerHTML=help;
+  document.getElementById('confirm-ok').textContent='Đóng';
+  document.getElementById('confirm-ok').onclick=()=>closeMo('mo-confirm');
+  openMo('mo-confirm');
+});
+
+// ── Phím mũi tên: điều hướng trong bảng PXK ──────────────────
+// ↑↓ di chuyển dòng, Space tick checkbox, Enter mở/in phiếu
+let _pxkFocusIdx=-1;
+function _pxkRows(){return [...document.querySelectorAll('#pxk-tbody tr:not(.row-locked-hide)')];}
+function _pxkHighlight(idx){
+  const rows=_pxkRows();if(!rows.length)return;
+  idx=Math.max(0,Math.min(idx,rows.length-1));
+  rows.forEach((r,i)=>r.style.outline=i===idx?'2px solid var(--blue)':'');
+  rows[idx]?.scrollIntoView({block:'nearest'});
+  _pxkFocusIdx=idx;
+}
+
+document.addEventListener('keydown',function(e){
+  // Chỉ hoạt động khi không modal, không đang nhập
+  const tag=document.activeElement?.tagName;
+  const inInput=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT';
+  const modalOpen=document.querySelector('.mo.open');
+  if(inInput||modalOpen)return;
+
+  // Chỉ kích hoạt khi đang ở tab PXK
+  const pxkTab=document.getElementById('bh-nkxk');
+  if(!pxkTab||!pxkTab.classList.contains('active'))return;
+
+  const rows=_pxkRows();
+  if(!rows.length)return;
+
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    _pxkHighlight(_pxkFocusIdx<0?0:_pxkFocusIdx+1);
+  }
+  else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    _pxkHighlight(_pxkFocusIdx<=0?0:_pxkFocusIdx-1);
+  }
+  else if(e.key==='ArrowLeft'){
+    e.preventDefault();
+    // Cuộn bảng sang trái
+    const wrap=document.querySelector('#bh-nkxk .tbl-wrap');
+    if(wrap)wrap.scrollLeft=Math.max(0,wrap.scrollLeft-120);
+  }
+  else if(e.key==='ArrowRight'){
+    e.preventDefault();
+    // Cuộn bảng sang phải
+    const wrap=document.querySelector('#bh-nkxk .tbl-wrap');
+    if(wrap)wrap.scrollLeft+=120;
+  }
+  else if(e.key===' '&&_pxkFocusIdx>=0){
+    // Space: tick/untick checkbox dòng đang chọn
+    e.preventDefault();
+    const chk=rows[_pxkFocusIdx]?.querySelector('.pxk-chk');
+    if(chk&&!chk.disabled)chk.checked=!chk.checked;
+  }
+  else if(e.key==='Enter'&&_pxkFocusIdx>=0){
+    // Enter: in phiếu dòng đang chọn
+    e.preventDefault();
+    const lnk=rows[_pxkFocusIdx]?.querySelector('.lnk');
+    if(lnk)lnk.click();
+  }
+  else if(e.key==='Delete'&&_pxkFocusIdx>=0){
+    // Delete: xóa phiếu dòng đang chọn (nếu là Nháp)
+    e.preventDefault();
+    const chk=rows[_pxkFocusIdx]?.querySelector('.pxk-chk');
+    if(chk&&!chk.disabled&&chk.dataset.id)xoaPXK(chk.dataset.id);
+  }
+});
+function acSearch(ctx,q){
+  const drop=document.getElementById(ctx+'-drop');
+  if(!drop) return;
+  const list=DB.khachHang.filter(k=>!q||k.ten.toLowerCase().includes(q.toLowerCase())||k.ma.toLowerCase().includes(q.toLowerCase())).slice(0,20);
+  if(!list.length){drop.innerHTML=`<div class="ac-item" style="color:var(--t3)">Không tìm thấy</div>`;drop.classList.add('open');return;}
+  drop.innerHTML=list.map(k=>`<div class="ac-item" onmousedown="acSelect('${ctx}','${k.id}')">
+    <div class="ac-item-main">${k.ten}<span class="ac-item-badge">${k.ma}</span></div>
+    <div class="ac-item-sub">SĐT: ${k.sdt}</div>
+  </div>`).join('');
+  drop.classList.add('open');
+}
+function acSelect(ctx,khId){
+  const kh=getKH(khId);
+  document.getElementById(ctx+'-input').value=kh.ten;
+  document.getElementById(ctx).value=kh.id;
+  document.getElementById(ctx+'-drop').classList.remove('open');
+  const prefix=ctx.replace('-kh','');
+  const addr=document.getElementById(prefix+'-diachi');
+  if(addr&&kh.diachi) addr.value=kh.diachi;
+  const sdt=document.getElementById(prefix+'-sdt');
+  if(sdt&&kh.sdt) sdt.value=kh.sdt;
+}
+function acSetKH(ctx,khId){
+  const kh=getKH(khId);if(!kh.id) return;
+  document.getElementById(ctx+'-input').value=kh.ten;
+  document.getElementById(ctx).value=kh.id;
+  const prefix=ctx.replace('-kh','');
+  const addr=document.getElementById(prefix+'-diachi');
+  if(addr&&kh.diachi) addr.value=kh.diachi;
+  const sdtEl=document.getElementById(prefix+'-sdt');if(sdtEl&&kh.sdt)sdtEl.value=kh.sdt;
+}
+function acKeyNav(e,ctx){
+  const drop=document.getElementById(ctx+'-drop');
+  if(!drop||!drop.classList.contains('open')){
+    if(e.key==='ArrowDown'){e.preventDefault();acSearch(ctx,document.getElementById(ctx+'-input').value);return;}
+    return;
+  }
+  const items=[...drop.querySelectorAll('.ac-item')];
+  let sel=parseInt(drop.dataset.sel??'-1');
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    sel=Math.min(sel+1,items.length-1);
+    drop.dataset.sel=sel;
+    items.forEach((r,i)=>r.style.background=i===sel?'#e0eeff':'');
+    if(items[sel])items[sel].scrollIntoView({block:'nearest'});
+  } else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    sel=Math.max(sel-1,0);
+    drop.dataset.sel=sel;
+    items.forEach((r,i)=>r.style.background=i===sel?'#e0eeff':'');
+    if(items[sel])items[sel].scrollIntoView({block:'nearest'});
+  } else if(e.key==='Enter'){
+    e.preventDefault();
+    if(sel>=0&&items[sel]){
+      items[sel].dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));
+      drop.dataset.sel='-1';
+    }
+  } else if(e.key==='Escape'){
+    drop.classList.remove('open');
+    drop.dataset.sel='-1';
+  }
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.ac-wrap'))document.querySelectorAll('.ac-drop.open').forEach(d=>d.classList.remove('open'));});
+
 // ============ AUTOCOMPLETE ENGINE ============
 // acSearch(ctx, query) - ctx: 'pxk-kh', 'bg-kh', 'pnk-sp-N'
 const _acActive={};
@@ -2370,7 +2700,7 @@ function savePXK(){
     p.soSach='Ghi Số';
     p.updatedAt=Date.now();
     // Trừ tồn kho mới
-    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
+    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=(sp.ton||0)-it.sl;sp.updatedAt=Date.now();}});
     toast('Đã cập nhật & ghi sổ phiếu xuất kho!');
   } else {
     const ma=genId('PXK');
@@ -2381,7 +2711,7 @@ function savePXK(){
       ghichu:document.getElementById('pxk-ghichu').value,
       items,soSach:'Ghi Số',hoadonVAT:'Chưa Xuất',updatedAt:Date.now()});
     // Trừ tồn kho khi xuất
-    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
+    items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=(sp.ton||0)-it.sl;sp.updatedAt=Date.now();}});
     toast('Đã lập & ghi sổ phiếu xuất kho: '+ma);
   }
   closeMo('mo-pxk');
@@ -2397,7 +2727,7 @@ function ghiSoPXK(id){
   // Trừ tồn kho khi ghi sổ
   (p.items||[]).forEach(it=>{
     const sp=DB.sanPham.find(x=>x.id===it.spId);
-    if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}
+    if(sp){sp.ton=(sp.ton||0)-it.sl;sp.updatedAt=Date.now();}
   });
   p.soSach='Ghi Số';
   p.updatedAt=Date.now();
@@ -2429,6 +2759,8 @@ function xoaPXK(id){
     renderPXKTable();
   });
 }
+function inPXK(id){xemPhieuPXK(id);}
+
 
 function isPXKLocked(p){
   // locked if: signed into a signed hoaDon
@@ -2455,107 +2787,164 @@ function unghiSoPXK(id){
   });
 }
 
+function initPXKFilters(){
+  const sel=document.getElementById('pxk-filter-nv');
+  if(sel&&sel.options.length<=1){
+    sel.innerHTML='<option value="">Tất cả NV</option>'
+      +DB.nhanVien.filter(n=>!n._deleted).map(n=>`<option value="${n.id}">(${n.ma}) ${n.ten}</option>`).join('');
+  }
+}
+function togglePXKFilter(){
+  const popup=document.getElementById('pxk-filter-popup');
+  const bd=document.getElementById('pxk-filter-backdrop');
+  if(!popup) return;
+  const open=popup.style.display==='block';
+  popup.style.display=open?'none':'block';
+  if(bd) bd.style.display=open?'none':'block';
+  if(!open) initPXKFilters();
+}
+function clearPXKFilter(){
+  ['pxk-filter-nv','pxk-filter-tt','pxk-filter-gs','pxk-filter-hd','pxk-filter-from','pxk-filter-to'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  renderPXKTable();
+}
+function updatePXKFilterBadge(){
+  const ids=['pxk-filter-nv','pxk-filter-tt','pxk-filter-gs','pxk-filter-hd','pxk-filter-from','pxk-filter-to'];
+  const active=ids.filter(id=>document.getElementById(id)?.value).length;
+  const badge=document.getElementById('pxk-filter-badge');
+  if(badge){badge.style.display=active>0?'':'none';badge.textContent=active;}
+  const btn=document.getElementById('pxk-filter-btn');
+  if(btn) btn.style.borderColor=active>0?'#3b82f6':'var(--border)';
+}
 function renderPXKTable(){
   const q=(document.getElementById('pxk-search')?.value||'').toLowerCase();
-  const tbody=document.getElementById('pxk-tbody');
-  if(!tbody) return;
-  const list=DB.pxk.filter(p=>!p._deleted&&(!q||p.ma.toLowerCase().includes(q)||(getKH(p.khId).ten||'').toLowerCase().includes(q))).sort((a,b)=>b.ngay.localeCompare(a.ngay)||(b.updatedAt||0)-(a.updatedAt||0));
-  if(!list.length){tbody.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu xuất kho nào</p></div></td></tr>`;return;}
+  const filterNV=document.getElementById('pxk-filter-nv')?.value||'';
+  const filterTT=document.getElementById('pxk-filter-tt')?.value||'';
+  const filterGS=document.getElementById('pxk-filter-gs')?.value||'';
+  const filterHD=document.getElementById('pxk-filter-hd')?.value||'';
+  const filterFrom=document.getElementById('pxk-filter-from')?.value||'';
+  const filterTo=document.getElementById('pxk-filter-to')?.value||'';
+  updatePXKFilterBadge();
+  const tbody=document.getElementById('pxk-tbody');if(!tbody)return;
+  const list=DB.pxk.filter(p=>{
+    if(p._deleted) return false;
+    if(q&&!p.ma.toLowerCase().includes(q)&&!(getKH(p.khId).ten||'').toLowerCase().includes(q)) return false;
+    if(filterNV&&p.kdId!==filterNV) return false;
+    if(filterTT&&p.httt!==filterTT) return false;
+    if(filterGS&&p.soSach!==filterGS) return false;
+    if(filterHD&&p.hoadonVAT!==filterHD) return false;
+    if(filterFrom&&p.ngay<filterFrom) return false;
+    if(filterTo&&p.ngay>filterTo) return false;
+    return true;
+  }).sort((a,b)=>b.ngay.localeCompare(a.ngay)||(b.updatedAt||0)-(a.updatedAt||0));
+  if(!list.length){tbody.innerHTML=`<tr><td colspan="13"><div class="empty"><div class="empty-ico">📭</div><p>Chưa có phiếu xuất kho nào</p></div></td></tr>`;return;}
   tbody.innerHTML=list.map(p=>{
     const kh=getKH(p.khId);
-    const {total}=calcPXKTotals(p.items,p.vat);
-    const locked=isPXKLocked(p);
-    const isGhiSo=p.soSach==='Ghi Số';
-    const ssBdg=isGhiSo?'bdg-green':'bdg-orange';
-    const ttBdg=p.httt==='Tiền Mặt'?'bdg-green':'bdg-red';
-    const lockIcon=locked?'🔒 ':' ';
-    let actions='';
-    if(locked){
-      actions=`<span class="bdg bdg-gray" style="font-size:10.5px">🔒 Đã khóa</span><span class="sep"></span><span class="al al-gray" onclick="xemPhieuPXK('${p.id}')">🖨 In</span>`;
-    } else if(isGhiSo){
-      actions=`<span class="al al-orange" onclick="unghiSoPXK('${p.id}')" style="color:var(--orange)">↩ Bỏ Ghi Sổ</span><span class="sep"></span><span class="al al-red" onclick="xoaPXK('${p.id}')">🗑 Xóa</span><span class="sep"></span><span class="al al-gray" onclick="xemPhieuPXK('${p.id}')">🖨 In</span>`;
-    } else {
-      actions=`<span class="al al-green" onclick="ghiSoPXK('${p.id}')">✔ Ghi Sổ</span><span class="sep"></span><span class="al al-blue" onclick="openModalPXK('${p.id}')">✏️ Sửa</span><span class="sep"></span><span class="al al-red" onclick="xoaPXK('${p.id}')">🗑 Xóa</span><span class="sep"></span><span class="al al-gray" onclick="xemPhieuPXK('${p.id}')">🖨 In</span>`;
-    }
+    const vatPct=Number(p.vat??0);
+    // Tính chi tiết: tiền hàng trước VAT, tiền CK, tiền VAT, tổng TT
+    let subTotal=0, tongCK=0;
+    (p.items||[]).forEach(it=>{
+      const goc=it.sl*it.donGia;
+      const ck=goc*(it.ck||0)/100;
+      tongCK+=ck;
+      subTotal+=goc-ck;
+    });
+    const tienVAT=Math.round(subTotal*vatPct/100);
+    const tongTT=Math.round(subTotal+tienVAT);
+    const tongHang=Math.round(subTotal); // tiền hàng sau CK, trước VAT
+    const tongHangGoc=Math.round(subTotal+tongCK); // tiền hàng gốc trước CK
+    tongCK=Math.round(tongCK);
+    // NV bán hàng
+    const nv=getNV(p.kdId);
+    const locked=isPXKLocked(p);const isGS=p.soSach==='Ghi Số';
+    let acts='';
+    if(locked) acts=`<span class="bdg bdg-gray" style="font-size:10.5px">🔒 Khóa</span><span class="sep"></span><span class="al al-gray" onclick="inPXK('${p.id}')">🖨 In</span>`;
+    else if(isGS) acts=`<span class="al al-orange" onclick="unghiSoPXK('${p.id}')">↩ Bỏ GS</span><span class="sep"></span><span class="al al-gray" onclick="ghiSoPXK('${p.id}')">📝 GS</span><span class="sep"></span><span class="al al-gray" onclick="inPXK('${p.id}')">🖨</span>`;
+    else acts=`<span class="al al-blue" onclick="openModalPXK('${p.id}')">✏️</span><span class="sep"></span><span class="al al-red" onclick="xoaPXK('${p.id}')">🗑</span><span class="sep"></span><span class="al al-green" onclick="ghiSoPXK('${p.id}')">📝 GS</span><span class="sep"></span><span class="al al-gray" onclick="inPXK('${p.id}')">🖨</span>`;
+    const sticky0='position:sticky;left:0;z-index:1;background:var(--bg2)';
+    const sticky1='position:sticky;left:32px;z-index:1;background:var(--bg2);white-space:nowrap';
+    const stickyR='position:sticky;right:0;z-index:1;background:var(--bg2);box-shadow:-2px 0 4px rgba(0,0,0,.06)';
     return `<tr class="${locked?'row-locked':''}">
-      <td><input type="checkbox" class="pxk-chk" data-id="${p.id}" ${locked?'disabled':''}></td>
-      <td>${p.ngay}</td>
-      <td><span class="lnk" onclick="xemPhieuPXK('${p.id}')">${lockIcon}${p.ma}</span></td>
+      <td style="${sticky0}"><input type="checkbox" class="pxk-chk" data-id="${p.id}" ${locked?'disabled':''}></td>
+      <td style="${sticky1}">${p.ngay}</td>
+      <td><span class="lnk" onclick="inPXK('${p.id}')">${locked?'🔒 ':' '}${p.ma}</span></td>
       <td>${kh.ten||p.khId}${p.nguoiNhan?`<br><span style="font-size:11px;color:var(--t3);font-style:italic">✏️ ${p.nguoiNhan}</span>`:''}</td>
-      <td class="tr money m-blue">${fmt(total)} ₫</td>
-      <td><span class="bdg ${ssBdg}">${p.soSach}</span></td>
+      <td style="white-space:nowrap;font-size:12px">${nv.ten||p.kdId||'—'}</td>
+      <td class="tr money">${fmt(tongHang)} ₫</td>
+      <td class="tr money ${tongCK>0?'m-orange':''}">${tongCK>0?fmt(tongCK)+' ₫':'—'}</td>
+      <td class="tr money ${tienVAT>0?'m-blue':''}">${tienVAT>0?fmt(tienVAT)+' ₫':'—'}</td>
+      <td class="tr money m-blue"><strong>${fmt(tongTT)} ₫</strong></td>
+      <td><span class="bdg ${isGS?'bdg-green':'bdg-orange'}">${p.soSach}</span></td>
       <td><span class="bdg bdg-gray" style="font-size:10.5px">${p.hoadonVAT}</span></td>
-      <td><span class="bdg ${ttBdg}">${p.httt==='Tiền Mặt'?'Đã TT':'Công Nợ'}</span></td>
-      <td><div class="acts">${actions}</div></td>
-    </tr>`;
+      <td><span class="bdg ${p.httt==='Tiền Mặt'?'bdg-green':'bdg-red'}">${p.httt==='Tiền Mặt'?'Đã TT':'Công Nợ'}</span></td>
+      <td style="${stickyR}"><div class="acts">${acts}</div></td></tr>`;
   }).join('');
 }
 
-function toggleAllCheck(ctx,chk){
-  const clsMap={pxk:'pxk-chk',gom:'gom-chk',tg:'tg-chk'};
-  document.querySelectorAll('.'+clsMap[ctx]).forEach(c=>c.checked=chk.checked);
-  if(ctx==='gom'||ctx==='tg') calcThuGopTotal();
-}
-
-// ============ BAO GIA ============
+// ============ BÁO GIÁ ============
 function openModalBaoGia(bgId=null){
-  DB._editCtx={type:'bg',id:bgId};
+  DB._editCtx={id:bgId};
   fillNVSelect('bg-nv');
   document.getElementById('bg-ngay').value=todayStr();
   document.getElementById('bg-items').innerHTML='';
   document.getElementById('bg-ghichu').value='';
+  document.getElementById('bg-diachi').value='';
+  document.getElementById('bg-httt').value='Công Nợ';
+  document.getElementById('bg-vat').value='8';
   document.getElementById('bg-kh-input').value='';
   document.getElementById('bg-kh').value='';
   if(bgId){
     const b=DB.baoGia.find(x=>x.id===bgId);
+    if(!b) return;
     document.getElementById('mo-bg-title').textContent='Sửa Báo Giá';
-    acSetKH('bg-kh', b.khId);
-    document.getElementById('bg-nv').value=b.nvId;
+    acSetKH('bg-kh',b.khId);
+    if(b.nvId) document.getElementById('bg-nv').value=b.nvId;
     document.getElementById('bg-ngay').value=b.ngay;
-    document.getElementById('bg-hieuluc').value=b.hieuluc;
+    document.getElementById('bg-hieuluc').value=b.hieuluc||30;
     document.getElementById('bg-ghichu').value=b.ghichu||'';
+    if(b.diachi) document.getElementById('bg-diachi').value=b.diachi;
+    if(b.httt) document.getElementById('bg-httt').value=b.httt;
+    if(b.vat!==undefined) document.getElementById('bg-vat').value=b.vat;
     b.items.forEach(it=>addItemRow('bg',it));
   } else {
-    document.getElementById('mo-bg-title').textContent='Tạo Báo Giá Khách Hàng';
+    document.getElementById('mo-bg-title').textContent='Tạo Báo Giá';
     addItemRow('bg');
   }
-  calcBG();
-  openMo('mo-baogia');
+  calcBG();openMo('mo-baogia');
 }
 
 function saveBaoGia(){
   const khId=document.getElementById('bg-kh').value;
   const ngay=document.getElementById('bg-ngay').value;
-  if(!khId||!ngay){toast('Vui lòng điền đầy đủ thông tin!','error');return;}
-  const items=getItemsFromTbody('bg-items',true);
+  if(!khId||!ngay){toast('Vui lòng chọn KH và ngày!','error');return;}
+  const items=getItemsFromTbody('bg-items');
   if(!items.length){toast('Vui lòng thêm ít nhất 1 mặt hàng!','error');return;}
-  let sub=0; items.forEach(it=>sub+=it.sl*it.donGia*(1-it.ck/100));
+  const vatPct=Number(document.getElementById('bg-vat').value??0);
+  let sub=0;items.forEach(it=>sub+=it.sl*it.donGia*(1-(it.ck||0)/100));
+  const total=sub+sub*vatPct/100;
+  const extraFields={
+    nvId:document.getElementById('bg-nv').value,
+    hieuluc:document.getElementById('bg-hieuluc').value,
+    ghichu:document.getElementById('bg-ghichu').value,
+    diachi:document.getElementById('bg-diachi').value,
+    httt:document.getElementById('bg-httt').value,
+    vat:vatPct,
+  };
   const ctx=DB._editCtx;
   if(ctx&&ctx.id){
     const b=DB.baoGia.find(x=>x.id===ctx.id);
-    Object.assign(b,{khId,ngay,nvId:document.getElementById('bg-nv').value,hieuluc:document.getElementById('bg-hieuluc').value,ghichu:document.getElementById('bg-ghichu').value,items,tongTien:sub});
+    if(b) Object.assign(b,stamp({khId,ngay,...extraFields,items,tongTien:total}));
     toast('Đã cập nhật báo giá!');
   } else {
     const ma=genId('BG');
-    DB.baoGia.unshift({id:ma,ma,ngay,khId,nvId:document.getElementById('bg-nv').value,hieuluc:document.getElementById('bg-hieuluc').value,ghichu:document.getElementById('bg-ghichu').value,items,tongTien:sub,trangThai:'Đang duyệt'});
+    DB.baoGia.unshift(stamp({id:ma,ma,ngay,khId,...extraFields,items,tongTien:total,trangThai:'Đang duyệt'}));
     toast('Đã tạo báo giá: '+ma);
   }
-  closeMo('mo-baogia');
-  renderBaoGiaTable();
+  closeMo('mo-baogia');renderBaoGiaTable();
+  if(_tramBaseUrl) setTimeout(()=>_tramPushMerged(true),200);
+  if(window._autoSave) window._autoSave();
 }
-
-function xoaBaoGia(id){
-  confirm2('Chuyển vào Thùng Rác','Báo giá '+id+' sẽ vào thùng rác.',()=>{
-    trashMove('baoGia',id);
-    const idx=DB.baoGia.findIndex(x=>x.id===id);
-    if(idx>=0) DB.baoGia[idx]={...DB.baoGia[idx],_deleted:true,updatedAt:Date.now()};
-    toast('🗑️ Đã chuyển '+id+' vào thùng rác');
-    if(window._autoSave) window._autoSave();
-    if(typeof lanPush==='function') setTimeout(()=>lanPush(true),200);
-    renderBaoGiaTable();
-  });
-}
-
 function renderBaoGiaTable(){
   const q=(document.getElementById('bg-search')?.value||'').toLowerCase();
   const tbody=document.getElementById('bg-tbody');
@@ -3219,7 +3608,7 @@ function savePNK(){
       // Chỉ hoàn tồn cũ nếu phiếu đang là Ghi Số
       // (Nháp = đã trừ tồn khi bỏ GS rồi, không trừ thêm)
       if(p.soSach==='Ghi Số'){
-        p.items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}});
+        p.items.forEach(it=>{const sp=DB.sanPham.find(x=>x.id===it.spId);if(sp){sp.ton=(sp.ton||0)-it.sl;sp.updatedAt=Date.now();}});
       }
       Object.assign(p,{nccId,ngay,httt,ghichu,diachi,sdtncc,vat:vatPct,items,tongTien:tot,soSach:'Ghi Số',updatedAt:Date.now()});
       // Cộng tồn kho mới
@@ -3248,7 +3637,7 @@ function xoaPNK(id){
     // Hoàn lại tồn kho khi xóa phiếu Nháp (vừa bỏ GS rồi xóa)
     if(p&&p.items) p.items.forEach(it=>{
       const sp=DB.sanPham.find(x=>x.id===it.spId);
-      if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}
+      if(sp){sp.ton=(sp.ton||0)-it.sl;sp.updatedAt=Date.now();}
     });
     const idx=DB.pnk.findIndex(x=>x.id===id);
     if(idx>=0) DB.pnk[idx]={...DB.pnk[idx],_deleted:true,updatedAt:Date.now()};
@@ -3290,7 +3679,7 @@ function unghiSoPNK(id){
     // Trừ lại tồn kho khi bỏ ghi sổ PNK
     (p.items||[]).forEach(it=>{
       const sp=DB.sanPham.find(x=>x.id===it.spId);
-      if(sp){sp.ton=Math.max(0,(sp.ton||0)-it.sl);sp.updatedAt=Date.now();}
+      if(sp){sp.ton=(sp.ton||0)-it.sl;sp.updatedAt=Date.now();}
     });
     p.soSach='Nháp';
     p.updatedAt=Date.now();
@@ -5768,5 +6157,7 @@ function tonResetAll(){
 
 })();
 </script>
+
+<div id="pxk-filter-backdrop" onclick="togglePXKFilter()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:2999"></div>
 </body>
 </html>
