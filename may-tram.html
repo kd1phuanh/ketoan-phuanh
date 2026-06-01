@@ -5439,33 +5439,11 @@ function exportExcel(type){
 function downloadAppsScript(){const gs='// Google Apps Script\nconst FILE_NAME="ketoan_phuanh_backup.json";const FOLDER_NAME="PhuAnh_KeToan_Backup";\nfunction getF(){const f=DriveApp.getFoldersByName(FOLDER_NAME);return f.hasNext()?f.next():DriveApp.createFolder(FOLDER_NAME);}\nfunction getFile(){const files=getF().getFilesByName(FILE_NAME);return files.hasNext()?files.next():null;}\nfunction out(o){return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);}\nfunction doGet(e){const a=(e.parameter&&e.parameter.action)||"load";try{if(a==="ping")return out({ok:true});if(a==="load"){const f=getFile();return f?out({ok:true,data:JSON.parse(f.getBlob().getDataAsString())}):out({ok:true,data:{}});}}catch(err){return out({ok:false,msg:err.toString()});}}\nfunction doPost(e){try{const p=JSON.parse(e.postData.contents);const folder=getF();let file=getFile();const content=JSON.stringify(p);if(file){file.setContent(content);}else{folder.createFile(FILE_NAME,content,MimeType.PLAIN_TEXT);}return out({ok:true});}catch(err){return out({ok:false,msg:err.toString()});}}';const blob=new Blob([gs],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='Code.gs';a.click();URL.revokeObjectURL(url);toast('📥 Đã tải Apps Script!');}
 
 function renderSyncPage(){
-  lanRoleChange();
-  const lc=JSON.parse(localStorage.getItem('phuanh_lan_cfg')||'{}');
+  // Load config LAN đã lưu vào form
+  const lc=JSON.parse(localStorage.getItem('mt_lan_cfg')||'{}');
   if(lc.port){const e=document.getElementById('lan-port');if(e)e.value=lc.port;}
   if(lc.name){const e=document.getElementById('lan-machine-name');if(e)e.value=lc.name;}
-  if(lc.role){const e=document.getElementById('lan-role');if(e){e.value=lc.role;lanRoleChange();}}
   if(lc.ip){const e=document.getElementById('lan-server-ip');if(e)e.value=lc.ip;}
-  if(lc.baseUrl) _lanBaseUrl=lc.baseUrl;
-  const gc=gdGetCfg();
-  if(gc.scriptUrl){const e=document.getElementById('gd-script-url');if(e)e.value=gc.scriptUrl;}
-  if(gc.machineName){const e=document.getElementById('gd-machine-name');if(e)e.value=gc.machineName;}
-  if(gc.interval){const e=document.getElementById('gd-interval');if(e)e.value=gc.interval;}
-  updateSyncStatus(gc.connected?'connected':'disconnected');
-  try{
-    const pc=new RTCPeerConnection({iceServers:[]});
-    pc.createDataChannel('');
-    pc.createOffer().then(o=>pc.setLocalDescription(o));
-    pc.onicecandidate=ev=>{
-      if(ev&&ev.candidate){
-        const m=ev.candidate.candidate?.match(/(\d{1,3}\.){3}\d{1,3}/);
-        if(m&&!m[0].startsWith('127')){
-          const el=document.getElementById('lan-my-ip');
-          if(el)el.textContent=m[0]+':'+(document.getElementById('lan-port')?.value||8765);
-        }
-        pc.close();
-      }
-    };
-  }catch(e){}
 }
 
 
@@ -6050,36 +6028,6 @@ function tonResetAll(){
     const gdCfg=JSON.parse(localStorage.getItem('phuanh_sync_cfg')||'{}');
     if(gdCfg.scriptUrl&&gdCfg.connected){fetch(gdCfg.scriptUrl+'?action=ping',{signal:AbortSignal.timeout(6000)}).then(r=>r.json()).then(d=>{if(d.ok){updateSyncStatus('connected');gdPull(true);setTimeout(()=>gdPush(true),3000);if(gdCfg.interval>0){if(window._syncInterval)clearInterval(window._syncInterval);window._syncInterval=setInterval(()=>gdPush(true),gdCfg.interval*1000);}}else updateSyncStatus('disconnected');}).catch(()=>updateSyncStatus('disconnected'));}
 
-
-    // ── Auto-reconnect LAN ────────────────────────────────────
-    const lanCfg = JSON.parse(localStorage.getItem('phuanh_lan_cfg')||'{}');
-    if(lanCfg.baseUrl){
-      _lanBaseUrl = lanCfg.baseUrl;
-      console.log('[LAN] Auto-reconnect:', lanCfg.baseUrl);
-      fetch(lanCfg.baseUrl+'/ping',{signal:AbortSignal.timeout(3000)})
-        .then(r=>r.json())
-        .then(d=>{
-          if(d.ok){
-            updateLanStatus('connected');
-            // Cập nhật nút UI
-            const cb=document.getElementById('lan-connect-btn');
-            const db=document.getElementById('lan-disconnect-btn');
-            if(cb) cb.style.display='none';
-            if(db) db.style.display='inline-flex';
-            // Auto sync interval
-            if(window._lanAutoInterval) clearInterval(window._lanAutoInterval);
-            _lanAutoInterval = setInterval(()=>lanPull(true), 30000);
-            // Pull ngay 1 lần
-            lanPull(true);
-            console.log('[LAN] Reconnect OK:', d.name);
-          }
-        })
-        .catch(e=>{
-          updateLanStatus('offline');
-          console.warn('[LAN] Reconnect fail:', e.message);
-        });
-    }
-
   }, 1500); // delay 1.5s để UI render xong
 
   // Bước 6: Save định kỳ mỗi 30 giây phòng khi patch bị bỏ sót
@@ -6410,16 +6358,22 @@ function setLanConnStatus(state){
   const topDot=document.getElementById('conn-dot');
   const topText=document.getElementById('conn-text');
   if(state==='online'){
-    if(dot){dot.className='sync-status-dot online';}
+    if(dot) dot.className='sync-status-dot online';
     if(text) text.textContent='Đã kết nối';
-    if(topBadge){topBadge.className='conn-badge online';}
-    if(topDot){topDot.className='conn-dot online';}
+    if(topBadge) topBadge.className='conn-badge online';
+    if(topDot) topDot.className='conn-dot online';
     if(topText) topText.textContent='Đã kết nối máy chủ';
+  } else if(state==='waiting'){
+    if(dot) dot.className='sync-status-dot offline';
+    if(text) text.textContent='Đang chờ máy chủ…';
+    if(topBadge){topBadge.className='conn-badge offline';topBadge.style.color='#f0883e';}
+    if(topDot){topDot.className='conn-dot offline';topDot.style.background='#f0883e';}
+    if(topText) topText.textContent='⏳ Đang chờ máy chủ bật…';
   } else {
-    if(dot){dot.className='sync-status-dot offline';}
+    if(dot) dot.className='sync-status-dot offline';
     if(text) text.textContent='Chưa kết nối';
-    if(topBadge){topBadge.className='conn-badge offline';}
-    if(topDot){topDot.className='conn-dot offline';}
+    if(topBadge){topBadge.className='conn-badge offline';topBadge.style.color='';}
+    if(topDot){topDot.className='conn-dot offline';topDot.style.background='';}
     if(topText) topText.textContent='Chưa kết nối máy chủ';
   }
 }
@@ -6445,21 +6399,37 @@ async function lanConnect(){
     const r=await fetch(url+'/ping',{signal:AbortSignal.timeout(4000)});
     const d=await r.json();
     if(d.ok){
+      // Dừng retry nếu đang chạy
+      if(_retryInterval){clearInterval(_retryInterval);_retryInterval=null;}
       _lanBaseUrl=url;
       setLanConnStatus('online');
       appendSyncLog('✅ Kết nối OK – '+d.name,'ok');
-      // Lưu config
-      const cfg=JSON.parse(localStorage.getItem('mt_lan_cfg')||'{}');
-      cfg.ip=document.getElementById('lan-server-ip').value;
-      cfg.port=document.getElementById('lan-port').value;
-      cfg.name=document.getElementById('lan-machine-name').value;
+      // Lưu config để auto-reconnect lần sau
+      const cfg={ip:document.getElementById('lan-server-ip').value,
+                 port:document.getElementById('lan-port').value,
+                 name:document.getElementById('lan-machine-name').value};
       localStorage.setItem('mt_lan_cfg',JSON.stringify(cfg));
+      // Bật auto-sync mỗi 30s
+      if(_lanAutoInterval){clearInterval(_lanAutoInterval);}
+      _lanAutoInterval=setInterval(()=>lanPull(true),30000);
+      const st=document.getElementById('auto-sync-status');
+      if(st) st.textContent='Đang chạy (mỗi 30s)';
+      const sel=document.getElementById('auto-sync-sel');
+      if(sel) sel.value='30';
       lanPull(false);
     }
   }catch(e){
     setLanConnStatus('offline');
     appendSyncLog('❌ Không kết nối được: '+e.message,'err');
     toast('Không kết nối được máy chủ!','error');
+    // Vẫn lưu IP và bắt đầu retry để tự kết nối khi server bật
+    const ip=document.getElementById('lan-server-ip').value.trim();
+    if(ip){
+      const cfg={ip,port:document.getElementById('lan-port').value,name:document.getElementById('lan-machine-name').value};
+      localStorage.setItem('mt_lan_cfg',JSON.stringify(cfg));
+      _lanBaseUrl=url;
+      _startRetry(url);
+    }
   }
 }
 
@@ -6533,6 +6503,37 @@ function setLanAutoSync(){
   }
 }
 
+// ============ AUTO-CONNECT & RETRY ============
+let _retryInterval = null;
+
+function _startRetry(url){
+  if(_retryInterval) return; // đã đang retry rồi
+  setLanConnStatus('waiting');
+  appendSyncLog('🔁 Chờ máy chủ bật… (thử lại mỗi 10 giây)', 'info');
+  _retryInterval = setInterval(async()=>{
+    try{
+      const r = await fetch(url+'/ping',{signal:AbortSignal.timeout(3000)});
+      const d = await r.json();
+      if(d.ok){
+        clearInterval(_retryInterval); _retryInterval=null;
+        _lanBaseUrl = url;
+        setLanConnStatus('online');
+        appendSyncLog('✅ Máy chủ đã bật – kết nối thành công!','ok');
+        toast('✅ Đã kết nối máy chủ tự động!');
+        lanPull(true);
+        // Bật auto-sync mỗi 30s
+        if(!_lanAutoInterval){
+          _lanAutoInterval = setInterval(()=>lanPull(true), 30000);
+          const st=document.getElementById('auto-sync-status');
+          if(st) st.textContent='Đang chạy (mỗi 30s)';
+          const sel=document.getElementById('auto-sync-sel');
+          if(sel) sel.value='30';
+        }
+      }
+    }catch(e){ /* server vẫn chưa bật, thử lại lần sau */ }
+  }, 10000);
+}
+
 // Auto-reconnect khi load
 (function initLAN(){
   try{
@@ -6543,9 +6544,31 @@ function setLanAutoSync(){
     if(cfg.ip){
       const url=`http://${cfg.ip}:${cfg.port||8765}`;
       _lanBaseUrl=url;
+      // Thử kết nối ngay
       fetch(url+'/ping',{signal:AbortSignal.timeout(3000)}).then(r=>r.json()).then(d=>{
-        if(d.ok){setLanConnStatus('online');appendSyncLog('🔄 Auto-reconnect OK','ok');lanPull(true);}
-      }).catch(()=>{});
+        if(d.ok){
+          setLanConnStatus('online');
+          appendSyncLog('🔄 Auto-reconnect OK – '+d.name,'ok');
+          lanPull(true);
+          // Bật auto-sync mỗi 30s
+          if(!_lanAutoInterval){
+            _lanAutoInterval = setInterval(()=>lanPull(true), 30000);
+            const st=document.getElementById('auto-sync-status');
+            if(st) st.textContent='Đang chạy (mỗi 30s)';
+            const sel=document.getElementById('auto-sync-sel');
+            if(sel) sel.value='30';
+          }
+        } else {
+          // Server phản hồi nhưng không OK → retry
+          appendSyncLog('⚠️ Máy chủ chưa sẵn sàng…','info');
+          _startRetry(url);
+        }
+      }).catch(()=>{
+        // Server chưa bật → bắt đầu retry loop
+        setLanConnStatus('offline');
+        appendSyncLog('⏳ Máy chủ chưa bật – sẽ tự kết nối khi bật CMD','info');
+        _startRetry(url);
+      });
     }
   }catch(e){}
 })();
