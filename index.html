@@ -720,59 +720,6 @@ document.querySelectorAll('.card').forEach(card => {
   });
 });
 
-// ============ MẬT KHẨU MÁY TRẠM 2 ============
-const MT2_KEY  = 'mt2_saved_pw';      // localStorage key
-const MT2_FILE = 'may-tram-2.html';   // file đích
-
-function openMayTram2(e) {
-  e.preventDefault();
-  const saved = localStorage.getItem(MT2_KEY);
-  if(saved) {
-    // Đã lưu → vào thẳng
-    window.location.href = MT2_FILE;
-    return;
-  }
-  // Chưa lưu → mở modal
-  const overlay = document.getElementById('pw-overlay');
-  overlay.style.display = 'flex';
-  document.getElementById('pw-input').value = '';
-  document.getElementById('pw-err').style.display = 'none';
-  setTimeout(() => document.getElementById('pw-input').focus(), 50);
-}
-
-function closeLogin() {
-  document.getElementById('pw-overlay').style.display = 'none';
-}
-
-function togglePwVis() {
-  const inp = document.getElementById('pw-input');
-  const eye = document.getElementById('pw-eye');
-  if(inp.type === 'password') { inp.type = 'text'; eye.textContent = '🙈'; }
-  else { inp.type = 'password'; eye.textContent = '👁'; }
-}
-
-function doLogin() {
-  const pw  = document.getElementById('pw-input').value;
-  const rem = document.getElementById('pw-remember').checked;
-  const err = document.getElementById('pw-err');
-
-  // Đổi mật khẩu ở đây ↓ (mặc định: phuanh2026)
-  const CORRECT_PW = 'phuanh2026';
-
-  if(pw === CORRECT_PW) {
-    err.style.display = 'none';
-    if(rem) localStorage.setItem(MT2_KEY, '1');
-    window.location.href = MT2_FILE;
-  } else {
-    err.style.display = 'block';
-    document.getElementById('pw-input').value = '';
-    document.getElementById('pw-input').focus();
-    // Shake animation
-    const box = err.parentElement;
-    box.style.animation = 'shake 0.3s ease';
-    setTimeout(() => box.style.animation = '', 300);
-  }
-}
 
 // Đóng khi click ra ngoài
 document.getElementById('pw-overlay').addEventListener('click', function(e){
