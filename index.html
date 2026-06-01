@@ -469,6 +469,14 @@
     <div>© 2026 Văn Phòng Phẩm Phú Anh · Hệ thống nội bộ</div>
     <div>DV22-LK949 Khu đất dịch vụ Đào Đặt – Hàng Bè, Phường Kiến Hưng, Hà Nội</div>
     <div style="margin-top:4px">Tel: <a href="tel:0978692470">0978 692 470</a> – <a href="tel:0936029426">0936 029 426</a> · MST: 0111029621</div>
+    <div style="margin-top:14px">
+      <button onclick="resetSavedPasswords()"
+        style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#484f58;font-size:11.5px;padding:6px 14px;cursor:pointer;font-family:inherit;transition:all 0.15s"
+        onmouseover="this.style.color='#f85149';this.style.borderColor='rgba(248,81,73,0.3)'"
+        onmouseout="this.style.color='#484f58';this.style.borderColor='rgba(255,255,255,0.1)'">
+        🔑 Xóa mật khẩu đã lưu (đăng xuất tất cả)
+      </button>
+    </div>
   </div>
 
 </div>
@@ -552,9 +560,9 @@ document.querySelectorAll('.card').forEach(card=>{
 // ── Cấu hình mật khẩu 3 hệ thống ──
 // Đổi mật khẩu tại đây ↓
 const SYSTEMS = {
-  mc:  { title:'Kế Toán Chính',    icon:'🖥️', color:'#58a6ff', bg:'linear-gradient(135deg,#1a6fcf,#0d4a99)', border:'rgba(88,166,255,0.35)',  pw:'phuanh2026@maychu',    file:'may-chu.html'    },
-  mt1: { title:'Máy Trạm 1',       icon:'💻', color:'#3fb950', bg:'linear-gradient(135deg,#1a7f37,#0d5a27)', border:'rgba(63,185,80,0.35)',   pw:'phuanh2026@maytram1',  file:'may-tram.html'   },
-  mt2: { title:'Máy Trạm 2',       icon:'💻', color:'#a371f7', bg:'linear-gradient(135deg,#7c3aed,#5b21b6)', border:'rgba(163,113,247,0.35)', pw:'phuanh2026@maytram2',  file:'may-tram-2.html' },
+  mc:  { title:'Kế Toán Chính',    icon:'🖥️', color:'#58a6ff', bg:'linear-gradient(135deg,#1a6fcf,#0d4a99)', border:'rgba(88,166,255,0.35)',  pw:'maychu2026',    file:'may-chu.html'    },
+  mt1: { title:'Máy Trạm 1',       icon:'💻', color:'#3fb950', bg:'linear-gradient(135deg,#1a7f37,#0d5a27)', border:'rgba(63,185,80,0.35)',   pw:'maytram12026',  file:'may-tram.html'   },
+  mt2: { title:'Máy Trạm 2',       icon:'💻', color:'#a371f7', bg:'linear-gradient(135deg,#7c3aed,#5b21b6)', border:'rgba(163,113,247,0.35)', pw:'maytram22026',  file:'may-tram-2.html' },
 };
 
 let _currentKey = null;
@@ -597,7 +605,7 @@ function togglePwVis() {
 function doLogin() {
   if(!_currentKey) return;
   const sys = SYSTEMS[_currentKey];
-  const pw  = document.getElementById('pw-input').value;
+  const pw  = document.getElementById('pw-input').value.trim(); // trim loại khoảng trắng
   const rem = document.getElementById('pw-remember').checked;
   const err = document.getElementById('pw-err');
 
@@ -613,6 +621,11 @@ function doLogin() {
     box.style.animation = 'shake 0.35s ease';
     setTimeout(()=>box.style.animation='', 350);
   }
+}
+
+function resetSavedPasswords() {
+  ['mc','mt1','mt2'].forEach(k=>localStorage.removeItem('sys_pw_'+k));
+  alert('✅ Đã xóa tất cả mật khẩu đã lưu!\nLần sau vào sẽ cần nhập lại mật khẩu.');
 }
 
 // Click ngoài overlay → đóng
