@@ -4640,6 +4640,8 @@ function bulkDownloadTemplate(){
 
 // ============ LAN SYNC (Python HTTP Server) ============
 let _lanAutoInterval=null, _lanBaseUrl='';
+// Expose để các hàm trong IIFE check được
+Object.defineProperty(window,'_lanBaseUrl',{get:()=>_lanBaseUrl,set:v=>{_lanBaseUrl=v;}});
 
 function lanRoleChange(){
   const role=document.getElementById('lan-role').value;
@@ -6117,6 +6119,22 @@ function tonResetAll(){
   // Patch các hàm save chính để đảm bảo luôn save
   const _origSavePXK = window.savePXK;
   window._autoSave = saveLocal; // expose để gọi thủ công nếu cần
+
+  // ── AUTO-PUSH SAU KHI LƯU (debounce 1.5s) ──────────────────
+  // Mỗi khi saveLocal được gọi → tự push lên LAN server sau 1.5s
+  // Debounce để tránh push liên tục khi nhiều thao tác dồn dập
+  let _autoPushTimer = null;
+  const _origAutoSave = window._autoSave;
+  window._autoSave = function(){
+    _origAutoSave(); // lưu local trước
+    // Sau đó push lên server nếu đang kết nối
+    if(_autoPushTimer) clearTimeout(_autoPushTimer);
+    _autoPushTimer = setTimeout(()=>{
+      if(typeof lanPush==='function' && window._lanBaseUrl){
+        lanPush(true); // silent=true, không hiện toast
+      }
+    }, 1500);
+  };
 
   // ── 4. THỰC THI INIT ─────────────────────────────────────────
   // Bước 1: Load từ localStorage

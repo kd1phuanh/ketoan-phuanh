@@ -5995,6 +5995,19 @@ function tonResetAll(){
   const _origSavePXK = window.savePXK;
   window._autoSave = saveLocal; // expose để gọi thủ công nếu cần
 
+  // ── AUTO-PUSH SAU KHI LƯU (debounce 1.5s) ──────────────────
+  let _autoPushTimer = null;
+  const _origAutoSave = window._autoSave;
+  window._autoSave = function(){
+    _origAutoSave(); // lưu local trước
+    if(_autoPushTimer) clearTimeout(_autoPushTimer);
+    _autoPushTimer = setTimeout(()=>{
+      if(typeof lanPush==='function' && window._lanBaseUrl){
+        lanPush(true); // silent push, không hiện toast
+      }
+    }, 1500);
+  };
+
   // ── 4. THỰC THI INIT ─────────────────────────────────────────
   // Bước 1: Load từ localStorage
   const hasLocal = loadLocal();
@@ -6344,6 +6357,7 @@ window.openModalDM=function(type, id){
 // ============ LAN SYNC ĐƠN GIẢN ============
 // (_lanBaseUrl và _lanAutoInterval đã được khai báo bên trên)
 let _lanBaseUrl='', _lanAutoInterval=null;
+Object.defineProperty(window,'_lanBaseUrl',{get:()=>_lanBaseUrl,set:v=>{_lanBaseUrl=v;}});
 
 function getLanUrl(){
   const ip=document.getElementById('lan-server-ip')?.value.trim()||'';
