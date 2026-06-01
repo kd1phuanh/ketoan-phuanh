@@ -914,8 +914,16 @@ select{font-family:inherit}
         <div class="fg"><label>Hiệu Lực (ngày)</label><input type="number" id="bg-hieuluc" value="30" min="1"></div>
       </div>
       <div class="form-grid fg2">
+        <div class="fg"><label>Địa Chỉ Giao Hàng <small style="color:var(--t3);font-weight:400">(tự điền theo KH, có thể sửa)</small></label><input type="text" id="bg-diachi" placeholder="Chọn khách hàng để tự điền địa chỉ…"></div>
+        <div class="fg"><label>Hình Thức Thanh Toán</label><select id="bg-httt"><option>Tiền Mặt</option><option>Chuyển Khoản</option><option selected>Công Nợ</option></select></div>
+      </div>
+      <div class="form-grid fg2">
+        <div class="fg"><label>Điện Thoại KH <small style="color:var(--t3);font-weight:400">(tự điền, có thể sửa)</small></label><input type="text" id="bg-sdt" placeholder="Số điện thoại khách hàng…"></div>
+        <div class="fg"><label>Thuế Suất VAT</label><select id="bg-vat" onchange="calcBG()"><option value="0">0%</option><option value="5">5%</option><option value="8" selected>8%</option><option value="10">10% (Tiêu chuẩn)</option></select></div>
+      </div>
+      <div class="form-grid fg2">
         <div class="fg"><label>Nhân Viên Phụ Trách</label><select id="bg-nv"></select></div>
-        <div class="fg"><label>Ghi Chú</label><input type="text" id="bg-ghichu" placeholder="Ghi chú…"></div>
+        <div class="fg"><label>Ghi Chú Nội Bộ</label><input type="text" id="bg-ghichu" placeholder="Diễn giải, ghi chú báo giá…"></div>
       </div>
       <div class="sec-title">☰ Danh Mục Hàng Hóa Báo Giá</div>
       <div class="it-wrap">
@@ -926,7 +934,9 @@ select{font-family:inherit}
       </div>
       <span class="add-row-lnk" onclick="addItemRow('bg')">➕ Thêm Hàng</span>
       <div class="totals-sec">
-        <div class="tot-row"><span>Tổng tiền hàng:</span><strong id="bg-total">0 ₫</strong></div>
+        <div class="tot-row"><span>Cộng tiền hàng:</span><strong id="bg-sub">0 ₫</strong></div>
+        <div class="tot-row" id="bg-tax-row"><span id="bg-vat-lbl">Thuế GTGT (8%):</span><strong id="bg-tax">0 ₫</strong></div>
+        <div class="tot-final"><span>Tổng Báo Giá:</span><span id="bg-total">0 ₫</span></div>
       </div>
     </div>
     <div class="mo-foot">
@@ -2182,6 +2192,7 @@ function calcPXK(){
 }
 
 function calcBG(){
+  const vatPct=Number(document.getElementById('bg-vat')?.value??8);
   let sub=0;
   document.querySelectorAll('#bg-items tr').forEach(tr=>{
     const nums=tr.querySelectorAll('input[type=number]');
@@ -2193,8 +2204,18 @@ function calcBG(){
     const vc=tr.querySelector('td:nth-child(5)');
     if(vc) vc.textContent=fmt(v)+' ₫';
   });
-  const el=document.getElementById('bg-total');
-  if(el) el.textContent=fmt(sub)+' ₫';
+  const tax=sub*vatPct/100;
+  const total=sub+tax;
+  const subEl=document.getElementById('bg-sub');
+  const taxEl=document.getElementById('bg-tax');
+  const taxRow=document.getElementById('bg-tax-row');
+  const vatLbl=document.getElementById('bg-vat-lbl');
+  const totalEl=document.getElementById('bg-total');
+  if(subEl) subEl.textContent=fmt(sub)+' ₫';
+  if(taxEl) taxEl.textContent=fmt(tax)+' ₫';
+  if(taxRow) taxRow.style.display=vatPct>0?'flex':'none';
+  if(vatLbl) vatLbl.textContent='Thuế GTGT ('+vatPct+'%):';
+  if(totalEl) totalEl.textContent=fmt(total)+' ₫';
 }
 
 function calcPNK(){
@@ -2813,10 +2834,13 @@ function openModalBaoGia(bgId=null){
   document.getElementById('bg-ngay').value=todayStr();
   document.getElementById('bg-items').innerHTML='';
   document.getElementById('bg-ghichu').value='';
-  if(document.getElementById('bg-vat')) document.getElementById('bg-vat').value='0';
   document.getElementById('bg-hieuluc').value='30';
   document.getElementById('bg-kh-input').value='';
   document.getElementById('bg-kh').value='';
+  document.getElementById('bg-diachi').value='';
+  document.getElementById('bg-sdt').value='';
+  if(document.getElementById('bg-vat')) document.getElementById('bg-vat').value='8';
+  if(document.getElementById('bg-httt')) document.getElementById('bg-httt').value='Công Nợ';
 
   if(bgId){
     const b=DB.baoGia.find(x=>x.id===bgId);
@@ -2826,8 +2850,11 @@ function openModalBaoGia(bgId=null){
     if(b.nvId) document.getElementById('bg-nv').value=b.nvId;
     document.getElementById('bg-ngay').value=b.ngay||todayStr();
     document.getElementById('bg-ghichu').value=b.ghichu||'';
-    if(document.getElementById('bg-vat')) document.getElementById('bg-vat').value=b.vat||0;
     document.getElementById('bg-hieuluc').value=b.hieuluc||30;
+    document.getElementById('bg-diachi').value=b.diachi||'';
+    document.getElementById('bg-sdt').value=b.sdt||'';
+    if(document.getElementById('bg-vat')) document.getElementById('bg-vat').value=b.vat??8;
+    if(document.getElementById('bg-httt')) document.getElementById('bg-httt').value=b.httt||'Công Nợ';
     (b.items||[]).forEach(it=>addItemRow('bg',it));
   } else {
     document.getElementById('mo-bg-title').textContent='Tạo Báo Giá Khách Hàng';
@@ -2843,7 +2870,7 @@ function saveBaoGia(){
   if(!khId||!ngay){toast('Vui lòng chọn khách hàng và ngày!','error');return;}
   const items=getItemsFromTbody('bg-items',true);
   if(!items.length){toast('Vui lòng thêm ít nhất 1 mặt hàng!','error');return;}
-  const vatPct=Number(document.getElementById('bg-vat')?.value??0);
+  const vatPct=Number(document.getElementById('bg-vat')?.value??8);
   const hieuluc=parseInt(document.getElementById('bg-hieuluc')?.value)||30;
   let sub=0;
   items.forEach(it=>sub+=it.sl*it.donGia*(1-(it.ck||0)/100));
@@ -2851,18 +2878,19 @@ function saveBaoGia(){
   const tongTien=sub+tax;
   const ghichu=document.getElementById('bg-ghichu').value;
   const nvId=document.getElementById('bg-nv').value;
+  const diachi=document.getElementById('bg-diachi').value;
+  const sdt=document.getElementById('bg-sdt').value;
+  const httt=document.getElementById('bg-httt')?.value||'Công Nợ';
   const ctx=DB._editCtx;
   if(ctx&&ctx.id){
     const b=DB.baoGia.find(x=>x.id===ctx.id);
     if(b){
-      b.khId=khId; b.ngay=ngay; b.nvId=nvId; b.items=items;
-      b.tongTien=tongTien; b.ghichu=ghichu; b.vat=vatPct; b.hieuluc=hieuluc;
-      b.updatedAt=Date.now();
+      Object.assign(b,{khId,ngay,nvId,items,tongTien,ghichu,vat:vatPct,hieuluc,diachi,sdt,httt,updatedAt:Date.now()});
       toast('Đã cập nhật báo giá: '+b.ma);
     }
   } else {
     const ma=genId('BG');
-    DB.baoGia.unshift({id:ma,ma,ngay,khId,nvId,items,tongTien,ghichu,vat:vatPct,hieuluc,trangThai:'Đang duyệt',updatedAt:Date.now()});
+    DB.baoGia.unshift({id:ma,ma,ngay,khId,nvId,items,tongTien,ghichu,vat:vatPct,hieuluc,diachi,sdt,httt,trangThai:'Đang duyệt',updatedAt:Date.now()});
     toast('Đã tạo báo giá: '+ma);
   }
   closeMo('mo-baogia');
