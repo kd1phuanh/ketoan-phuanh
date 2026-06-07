@@ -647,7 +647,7 @@ select{font-family:inherit}
       </div>
       <div class="fg" id="lan-server-ip-wrap" style="display:none">
         <label>IP Máy Chủ <span style="color:var(--red)">*</span></label>
-        <input type="text" id="lan-server-ip" placeholder="192.168.1.100" style="font-family:monospace;font-size:13px">
+        <input type="text" id="lan-server-ip" placeholder="45.117.179.143" style="font-family:monospace;font-size:13px">
       </div>
       <div class="fg">
         <label>Port</label>
@@ -3278,24 +3278,54 @@ function taoBangKeVAT(){
   if(!khId){toast('Vui lòng chọn khách hàng!','error');return;}
   const checked=Array.from(document.querySelectorAll('.gom-chk:checked'));
   if(!checked.length){toast('Vui lòng chọn ít nhất 1 PXK!','error');return;}
+
   let tongTien=0;
   const pxkList=[], pxkIds=[];
+  // key = spId|donGia|ck → gộp cùng mã + cùng giá + cùng CK thành 1 dòng
+  const itemMap={};
+
   checked.forEach(c=>{
     const p=DB.pxk.find(x=>x.id===c.dataset.id);
+    if(!p) return;
     const {total}=calcPXKTotals(p.items,p.vat);
     tongTien+=total;
     pxkList.push(p.ma);
     pxkIds.push(p.id);
+    (p.items||[]).forEach(it=>{
+      const sp=getSP(it.spId);
+      const sl=Number(it.sl)||0;
+      const donGia=Number(it.donGia)||0;
+      const ck=Number(it.ck)||0;
+      const key=`${it.spId}|${donGia}|${ck}`;
+      if(itemMap[key]){
+        itemMap[key].sl+=sl;
+        itemMap[key].thanhTien+=sl*donGia*(1-ck/100);
+      } else {
+        itemMap[key]={
+          spId:it.spId,
+          ten:sp.ten||it.ten||it.spId,
+          don:sp.don||it.don||'',
+          sl, donGia, ck,
+          thanhTien:sl*donGia*(1-ck/100)
+        };
+      }
+    });
   });
-  const kh=getKH(khId);
+
+  const bangKeItems=Object.values(itemMap).sort((a,b)=>a.ten.localeCompare(b.ten,'vi'));
+
   const ma=genId('HD');
-  // trangThai = Nháp khi mới tạo
-  DB.hoaDon.unshift({id:ma,ma,ngay:todayStr(),khId,tongTien,pxkList,pxkIds,soHD:ma,trangThai:'Nháp',kyBoi:null,kyNgay:null});
+  DB.hoaDon.unshift({
+    id:ma, ma, ngay:todayStr(), khId, tongTien,
+    pxkList, pxkIds, bangKeItems,
+    soHD:ma, trangThai:'Nháp', kyBoi:null, kyNgay:null
+  });
   checked.forEach(c=>{
     const p=DB.pxk.find(x=>x.id===c.dataset.id);
     if(p) p.hoadonVAT='Bảng kê: '+ma;
   });
-  toast('Đã tạo hóa đơn nháp: '+ma+' – Tổng: '+fmt(tongTien)+' ₫');
+  toast('✅ Đã tạo hóa đơn: '+ma+' – '+bangKeItems.length+' dòng hàng – '+fmt(tongTien)+' ₫');
+  if(window._autoSave) window._autoSave();
   renderHoaDon();
   renderPXKTable();
   const tabs=document.querySelectorAll('#page-ban-hang .sub-tab');
@@ -3488,16 +3518,45 @@ function kyHoaDon(){
 function inHoaDon(hdId){
   const h=DB.hoaDon.find(x=>x.id===hdId);if(!h)return;
   const kh=getKH(h.khId);const signed=h.trangThai==='Đã Ký';
-  let allItems=[],vatPct=8;
-  (h.pxkIds||[]).forEach(pid=>{
-    const p=DB.pxk.find(x=>x.id===pid);
-    if(p){vatPct=Number(p.vat??8);p.items.forEach(it=>allItems.push({...it}));}
-  });
-  let sub=0;allItems.forEach(it=>sub+=it.sl*it.donGia*(1-(it.ck||0)/100));
-  const tax=sub*vatPct/100,total=sub+tax;
+
+  // Ưu tiên dùng bangKeItems đã gộp sẵn; nếu HĐ cũ chưa có thì fallback loop PXK
+  let allItems=[], vatPct=8;
+  if(h.bangKeItems&&h.bangKeItems.length){
+    allItems=h.bangKeItems;
+    // Lấy vatPct từ PXK đầu tiên
+    const firstP=DB.pxk.find(x=>x.id===(h.pxkIds||[])[0]);
+    if(firstP) vatPct=Number(firstP.vat??8);
+  } else {
+    // Fallback cho hóa đơn cũ: gộp lại on-the-fly
+    const itemMap={};
+    (h.pxkIds||[]).forEach(pid=>{
+      const p=DB.pxk.find(x=>x.id===pid);
+      if(!p) return;
+      vatPct=Number(p.vat??8);
+      (p.items||[]).forEach(it=>{
+        const sp=getSP(it.spId);
+        const sl=Number(it.sl)||0;
+        const donGia=Number(it.donGia)||0;
+        const ck=Number(it.ck)||0;
+        const key=`${it.spId}|${donGia}|${ck}`;
+        if(itemMap[key]){
+          itemMap[key].sl+=sl;
+          itemMap[key].thanhTien+=sl*donGia*(1-ck/100);
+        } else {
+          itemMap[key]={spId:it.spId,ten:sp.ten||it.ten||it.spId,don:sp.don||it.don||'',sl,donGia,ck,thanhTien:sl*donGia*(1-ck/100)};
+        }
+      });
+    });
+    allItems=Object.values(itemMap).sort((a,b)=>a.ten.localeCompare(b.ten,'vi'));
+  }
+
+  let sub=0;
+  allItems.forEach(it=>sub+=(it.thanhTien!=null?it.thanhTien:it.sl*it.donGia*(1-(it.ck||0)/100)));
+  const tax=sub*vatPct/100, total=sub+tax;
+
   const rows=allItems.map((it,i)=>{
-    const tt=it.sl*it.donGia*(1-(it.ck||0)/100);
-    return '<tr><td class="tc">'+(i+1)+'</td><td>'+it.spId+'</td><td>'+it.ten+'</td>'
+    const tt=it.thanhTien!=null?it.thanhTien:it.sl*it.donGia*(1-(it.ck||0)/100);
+    return '<tr><td class="tc">'+(i+1)+'</td><td>'+(it.spId||'')+'</td><td>'+it.ten+'</td>'
       +'<td class="tc">'+it.don+'</td><td class="tr">'+it.sl+'</td>'
       +'<td class="tr">'+fmt(it.donGia)+'</td><td class="tr">'+(it.ck?it.ck+'%':'—')+'</td>'
       +'<td class="tr">'+fmt(tt)+'</td></tr>';

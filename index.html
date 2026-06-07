@@ -103,7 +103,7 @@ body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellips
     <div id="clock"></div>
   </div>
 
-  <div class="cards">
+  <div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr))">
     <a class="card card-blue" href="#" onclick="openSystem(event,'may-chu.html','mc')">
       <div class="card-arrow">↗</div>
       <div class="card-icon">🖥️</div>
@@ -119,9 +119,9 @@ body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellips
       <div class="card-icon">💻</div>
       <div class="card-label">Máy Trạm 1 · Client</div>
       <h2>Bán Hàng & Công Nợ</h2>
-      <p>Lập PXK, Báo Giá, thu công nợ, kiểm kho — đồng bộ LAN với máy chủ</p>
+      <p>Lập PXK, Báo Giá, thu công nợ, kiểm kho — đồng bộ VPS với máy chủ</p>
       <div class="card-features">
-        <span class="feat">📋 PXK</span><span class="feat">📝 Báo Giá</span><span class="feat">💳 Công Nợ</span><span class="feat">📦 Kiểm Kho</span><span class="feat">🔄 LAN Sync</span>
+        <span class="feat">📋 PXK</span><span class="feat">📝 Báo Giá</span><span class="feat">💳 Công Nợ</span><span class="feat">📦 Kiểm Kho</span><span class="feat">🔄 VPS Sync</span>
       </div>
     </a>
     <a class="card card-purple" href="#" onclick="openSystem(event,'may-tram-2.html','mt2')">
@@ -129,9 +129,19 @@ body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellips
       <div class="card-icon">💻</div>
       <div class="card-label">Máy Trạm 2 · Client</div>
       <h2>Bán Hàng & Công Nợ</h2>
-      <p>Lập PXK, Báo Giá, thu công nợ, kiểm kho — đồng bộ LAN với máy chủ</p>
+      <p>Lập PXK, Báo Giá, thu công nợ, kiểm kho — đồng bộ VPS với máy chủ</p>
       <div class="card-features">
-        <span class="feat">📋 PXK</span><span class="feat">📝 Báo Giá</span><span class="feat">💳 Công Nợ</span><span class="feat">📦 Kiểm Kho</span><span class="feat">🔄 LAN Sync</span>
+        <span class="feat">📋 PXK</span><span class="feat">📝 Báo Giá</span><span class="feat">💳 Công Nợ</span><span class="feat">📦 Kiểm Kho</span><span class="feat">🔄 VPS Sync</span>
+      </div>
+    </a>
+    <a class="card card-orange" href="#" onclick="openSystem(event,'quan-ly.html','ql')">
+      <div class="card-arrow">↗</div>
+      <div class="card-icon">👔</div>
+      <div class="card-label">Quản Lý · Manager</div>
+      <h2>Xem & Quản Lý</h2>
+      <p>Đầy đủ chức năng như máy chủ — đồng bộ VPS, không cần bật CMD</p>
+      <div class="card-features">
+        <span class="feat">📊 Dashboard</span><span class="feat">📋 PXK</span><span class="feat">👥 Công Nợ</span><span class="feat">📈 Báo Cáo</span><span class="feat">🔄 VPS Sync</span>
       </div>
     </a>
   </div>
@@ -182,6 +192,7 @@ const SYSTEMS = {
   mc:  { title:'Kế Toán Chính', icon:'🖥️', color:'#58a6ff', bg:'linear-gradient(135deg,#1a6fcf,#0d4a99)', border:'rgba(88,166,255,0.4)',  pw:'maychu2026',   file:'may-chu.html'    },
   mt1: { title:'Máy Trạm 1',   icon:'💻', color:'#3fb950', bg:'linear-gradient(135deg,#1a7f37,#0d5a27)', border:'rgba(63,185,80,0.4)',   pw:'maytram12026', file:'may-tram.html'   },
   mt2: { title:'Máy Trạm 2',   icon:'💻', color:'#a371f7', bg:'linear-gradient(135deg,#7c3aed,#5b21b6)', border:'rgba(163,113,247,0.4)', pw:'maytram22026', file:'may-tram-2.html' },
+  ql:  { title:'Quản Lý',      icon:'👔', color:'#f0883e', bg:'linear-gradient(135deg,#c2410c,#ea580c)', border:'rgba(240,136,62,0.4)',  pw:'quanly2026',   file:'quan-ly.html'    },
 };
 
 let _cur = null;
